@@ -9,22 +9,22 @@ import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { StatusBadge } from "@/components/ui/Badge";
 import { STATUS_LABELS } from "@/lib/constants";
-import { getSubmissionByCode } from "@/lib/store";
+import { getManuscriptByCode } from "@/lib/store";
 import { formatDate } from "@/lib/utils";
-import type { Submission } from "@/lib/types";
+import type { Manuscript } from "@/lib/types";
 
 function MySubmissionsContent() {
   const searchParams = useSearchParams();
   const initialCode = searchParams.get("code") ?? "";
   const [code, setCode] = useState(initialCode);
   const [searched, setSearched] = useState(!!initialCode);
-  const [result, setResult] = useState<Submission | null | undefined>(
-    initialCode ? getSubmissionByCode(initialCode) ?? null : null
+  const [result, setResult] = useState<Manuscript | null | undefined>(
+    initialCode ? getManuscriptByCode(initialCode) ?? null : null
   );
 
   const handleSearch = () => {
     setSearched(true);
-    setResult(getSubmissionByCode(code) ?? null);
+    setResult(getManuscriptByCode(code) ?? null);
   };
 
   return (

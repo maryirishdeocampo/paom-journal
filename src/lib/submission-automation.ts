@@ -1,7 +1,7 @@
 import { extractKeywordsFromAbstract, mergeKeywords } from "./keywords";
 import { getReviewers } from "./store";
 import { suggestReviewers, type ReviewerSuggestion } from "./reviewer-matching";
-import type { Submission } from "./types";
+import type { Manuscript } from "./types";
 
 export interface AutomatedSubmissionResult {
   keywords: string[];
@@ -25,7 +25,7 @@ export function runSubmissionAutomation(input: {
   return { keywords, extractedKeywords: extracted, suggestedReviewers };
 }
 
-export function automateExistingSubmission(submission: Submission): AutomatedSubmissionResult {
+export function automateExistingSubmission(submission: Manuscript): AutomatedSubmissionResult {
   return runSubmissionAutomation({
     title: submission.title,
     abstract: submission.abstract,

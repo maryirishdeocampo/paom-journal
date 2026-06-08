@@ -12,7 +12,8 @@ import { Modal } from "@/components/ui/Modal";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { extractKeywordsFromAbstract, mergeKeywords } from "@/lib/keywords";
 import { runSubmissionAutomation } from "@/lib/submission-automation";
-import { addSubmission } from "@/lib/store";
+import { addManuscript } from "@/lib/store";
+import { inferResearchArea } from "@/lib/manuscript-utils";
 import type { ReviewerSuggestion } from "@/lib/reviewer-matching";
 import type { ManuscriptFile } from "@/lib/types";
 import { generateTrackingCode } from "@/lib/utils";
@@ -178,16 +179,21 @@ export function SubmissionForm() {
         readFileAsDataUrl(docxFile),
       ]);
 
-      addSubmission({
+      const now = new Date().toISOString();
+      addManuscript({
         id: code,
+        manuscriptId: code,
         trackingCode: code,
         title: data.title,
         authors: data.authors.split(",").map((a) => a.trim()),
         affiliation: data.affiliation,
         abstract: data.abstract,
         keywords: automation.keywords,
-        status: "submitted",
-        submittedAt: new Date().toISOString(),
+        researchArea: inferResearchArea(automation.keywords),
+        status: "new_submission",
+        submittedAt: now,
+        updatedAt: now,
+        assignedReviewerIds: [],
         email: data.email,
         manuscripts: { pdf, docx },
         suggestedReviewerIds: automation.suggestedReviewers.map((s) => s.reviewer.id),

@@ -1,96 +1,152 @@
+import { MANUSCRIPT_WORKFLOW } from "./constants";
+import { normalizeManuscript } from "./manuscript-utils";
 import {
-  publications as seedPublications,
+  seedIssues,
+  seedManuscripts,
   reviewers as seedReviewers,
-  scheduleIssues as seedSchedule,
-  submissions as seedSubmissions,
 } from "./mock-data";
 import type {
-  Publication,
+  JournalIssue,
+  Manuscript,
+  ManuscriptStatus,
   Reviewer,
-  ScheduleIssue,
   StoreData,
-  Submission,
-  SubmissionStatus,
 } from "./types";
 
-const STORE_KEY = "paom-store-v1";
+const STORE_KEY = "paom-store-v2";
+const LEGACY_STORE_KEY = "paom-store-v1";
 const STORE_EVENT = "paom-store-updated";
+
+const ACTIVE_REVIEW_STATUSES: ManuscriptStatus[] = [
+  "under_review",
+  "revision_required",
+];
 
 function isBrowser() {
   return typeof window !== "undefined";
 }
 
+function migrateV1Store(v1: {
+  submissions?: Record<string, unknown>[];
+  scheduleIssues?: JournalIssue[];
+  publications?: unknown[];
+  reviewers?: Reviewer[];
+}): StoreData {
+  const manuscripts = (v1.submissions ?? []).map((s) =>
+    normalizeManuscript(s as Record<string, unknown>)
+  );
+
+  // Merge masterlist publications not already in manuscripts
+  const pubs = (v1.publications ?? []) as Array<{
+    id: string;
+    title: string;
+    authors: string[];
+    year: number;
+    category: string;
+    doi?: string;
+    keywords: string[];
+  }>;
+
+  for (const pub of pubs) {
+    if (manuscripts.some((m) => m.title === pub.title)) continue;
+    const code = `PAOM-ML-${pub.id.toUpperCase()}`;
+    manuscripts.push(
+      normalizeManuscript({
+        id: pub.id,
+        trackingCode: code,
+        title: pub.title,
+        authors: pub.authors,
+        affiliation: "Philippine Academy of Management",
+        abstract: `Published article: ${pub.title}`,
+        keywords: pub.keywords,
+        researchArea: pub.category,
+        status: "published",
+        submittedAt: `${pub.year}-01-01`,
+        updatedAt: `${pub.year}-06-01`,
+        doi: pub.doi,
+        email: "",
+      })
+    );
+  }
+
+  return {
+    manuscripts: manuscripts.length ? manuscripts : seedManuscripts,
+    reviewers: v1.reviewers ?? seedReviewers,
+    issues: v1.scheduleIssues ?? seedIssues,
+  };
+}
+
 function readStore(): StoreData {
   if (!isBrowser()) {
     return {
-      submissions: seedSubmissions,
+      manuscripts: seedManuscripts,
       reviewers: seedReviewers,
-      scheduleIssues: seedSchedule,
-      publications: seedPublications,
+      issues: seedIssues,
     };
   }
 
   try {
     const raw = localStorage.getItem(STORE_KEY);
     if (raw) {
-      return JSON.parse(raw) as StoreData;
+      const parsed = JSON.parse(raw) as StoreData;
+      return {
+        manuscripts: parsed.manuscripts.map((m) =>
+          normalizeManuscript(m as unknown as Record<string, unknown>)
+        ),
+        reviewers: parsed.reviewers,
+        issues: parsed.issues,
+      };
     }
   } catch {
-    // fall through to seed
+    // continue
+  }
+
+  // Migrate from v1
+  try {
+    const v1Raw = localStorage.getItem(LEGACY_STORE_KEY);
+    if (v1Raw) {
+      const migrated = migrateV1Store(JSON.parse(v1Raw));
+      migrateLegacyFormSubmissions(migrated);
+      writeStore(migrated);
+      return migrated;
+    }
+  } catch {
+    // continue
   }
 
   const initial: StoreData = {
-    submissions: seedSubmissions,
+    manuscripts: seedManuscripts,
     reviewers: seedReviewers,
-    scheduleIssues: seedSchedule,
-    publications: seedPublications,
+    issues: seedIssues,
   };
-
-  migrateLegacySubmissions(initial);
+  migrateLegacyFormSubmissions(initial);
   writeStore(initial);
   return initial;
 }
 
-function migrateLegacySubmissions(data: StoreData) {
+function migrateLegacyFormSubmissions(data: StoreData) {
   try {
-    const legacy = JSON.parse(localStorage.getItem("paom-submissions") ?? "[]") as Array<{
-      trackingCode: string;
-      title: string;
-      authors: string;
-      affiliation: string;
-      abstract: string;
-      keywords: string;
-      email: string;
-      submittedAt: string;
-      fileName?: string;
-      fileType?: string;
-      fileDataUrl?: string;
-      suggestedReviewers?: Array<{ id: string }>;
-    }>;
-
+    const legacy = JSON.parse(localStorage.getItem("paom-submissions") ?? "[]") as Array<
+      Record<string, unknown>
+    >;
     for (const item of legacy) {
-      if (data.submissions.some((s) => s.trackingCode === item.trackingCode)) continue;
-      data.submissions.unshift({
-        id: item.trackingCode,
-        trackingCode: item.trackingCode,
-        title: item.title,
-        authors: item.authors.split(",").map((a) => a.trim()),
-        affiliation: item.affiliation,
-        abstract: item.abstract,
-        keywords: item.keywords.split(",").map((k) => k.trim()),
-        status: "submitted",
-        submittedAt: item.submittedAt,
-        email: item.email,
-        suggestedReviewerIds: item.suggestedReviewers?.map((r) => r.id),
-        manuscript:
-          item.fileDataUrl && item.fileName
-            ? {
-                fileName: item.fileName,
-                fileType: item.fileType ?? "application/pdf",
-                dataUrl: item.fileDataUrl,
-              }
-            : undefined,
-      });
+      const code = item.trackingCode as string;
+      if (data.manuscripts.some((m) => m.trackingCode === code)) continue;
+      data.manuscripts.unshift(
+        normalizeManuscript({
+          ...item,
+          id: code,
+          status: "new_submission",
+          authors:
+            typeof item.authors === "string"
+              ? item.authors
+              : (item.authors as string[]),
+          keywords:
+            typeof item.keywords === "string"
+              ? item.keywords
+              : (item.keywords as string[]),
+        })
+      );
     }
   } catch {
     // ignore
@@ -106,9 +162,11 @@ function writeStore(data: StoreData) {
 
 function syncReviewerCounts(data: StoreData) {
   const counts = new Map<string, number>();
-  for (const s of data.submissions) {
-    if (s.reviewerId && ["under_review", "revision"].includes(s.status)) {
-      counts.set(s.reviewerId, (counts.get(s.reviewerId) ?? 0) + 1);
+  for (const m of data.manuscripts) {
+    if (ACTIVE_REVIEW_STATUSES.includes(m.status)) {
+      for (const rid of m.assignedReviewerIds) {
+        counts.set(rid, (counts.get(rid) ?? 0) + 1);
+      }
     }
   }
   data.reviewers = data.reviewers.map((r) => ({
@@ -121,37 +179,83 @@ export function getStore(): StoreData {
   return readStore();
 }
 
-export function getSubmissions(): Submission[] {
-  return readStore().submissions;
+// ─── Manuscripts ───────────────────────────────────────────────
+
+export function getManuscripts(): Manuscript[] {
+  return readStore().manuscripts;
 }
 
-export function getSubmissionByCode(code: string): Submission | undefined {
-  return getSubmissions().find(
-    (s) => s.trackingCode.toUpperCase() === code.toUpperCase()
+/** @deprecated */
+export const getSubmissions = getManuscripts;
+
+export function getManuscriptById(id: string): Manuscript | undefined {
+  return getManuscripts().find((m) => m.id === id);
+}
+
+export function getManuscriptByCode(code: string): Manuscript | undefined {
+  return getManuscripts().find(
+    (m) => m.trackingCode.toUpperCase() === code.toUpperCase()
   );
 }
 
-export function addSubmission(submission: Submission) {
+/** @deprecated */
+export const getSubmissionByCode = getManuscriptByCode;
+
+export function getManuscriptsByStatus(status: ManuscriptStatus): Manuscript[] {
+  return getManuscripts().filter((m) => m.status === status);
+}
+
+export function getPublishedManuscripts(): Manuscript[] {
+  return getManuscripts().filter((m) => m.status === "published");
+}
+
+export function addManuscript(manuscript: Manuscript) {
   const data = readStore();
-  data.submissions.unshift(submission);
+  data.manuscripts.unshift(normalizeManuscript(manuscript as unknown as Record<string, unknown>));
   writeStore(data);
 }
 
-export function updateSubmission(id: string, patch: Partial<Submission>) {
+/** @deprecated */
+export const addSubmission = addManuscript;
+
+export function updateManuscript(id: string, patch: Partial<Manuscript>) {
   const data = readStore();
-  data.submissions = data.submissions.map((s) =>
-    s.id === id ? { ...s, ...patch } : s
+  data.manuscripts = data.manuscripts.map((m) =>
+    m.id === id
+      ? normalizeManuscript({
+          ...m,
+          ...patch,
+          updatedAt: new Date().toISOString(),
+        } as unknown as Record<string, unknown>)
+      : m
   );
   writeStore(data);
 }
 
-export function updateSubmissionStatus(id: string, status: SubmissionStatus) {
-  updateSubmission(id, { status });
+/** @deprecated */
+export const updateSubmission = updateManuscript;
+
+export function updateManuscriptStatus(id: string, status: ManuscriptStatus) {
+  updateManuscript(id, { status });
 }
 
-export function assignReviewer(submissionId: string, reviewerId: string | undefined) {
-  updateSubmission(submissionId, { reviewerId: reviewerId || undefined });
+/** @deprecated */
+export const updateSubmissionStatus = updateManuscriptStatus;
+
+export function assignReviewers(manuscriptId: string, reviewerIds: string[]) {
+  updateManuscript(manuscriptId, { assignedReviewerIds: reviewerIds });
 }
+
+/** @deprecated */
+export function assignReviewer(manuscriptId: string, reviewerId: string | undefined) {
+  assignReviewers(manuscriptId, reviewerId ? [reviewerId] : []);
+}
+
+export function assignManuscriptToIssue(manuscriptId: string, issueId: string | undefined) {
+  updateManuscript(manuscriptId, { issueId: issueId || undefined });
+}
+
+// ─── Reviewers ─────────────────────────────────────────────────
 
 export function getReviewers(): Reviewer[] {
   return readStore().reviewers;
@@ -173,82 +277,101 @@ export function addReviewer(reviewer: Reviewer) {
   writeStore(data);
 }
 
-export function getScheduleIssues(): ScheduleIssue[] {
-  return readStore().scheduleIssues;
+export function getReviewerAssignments(): Array<{
+  manuscript: Manuscript;
+  reviewer: Reviewer;
+}> {
+  const result: Array<{ manuscript: Manuscript; reviewer: Reviewer }> = [];
+  for (const m of getManuscripts()) {
+    for (const rid of m.assignedReviewerIds) {
+      const reviewer = getReviewerById(rid);
+      if (reviewer) result.push({ manuscript: m, reviewer });
+    }
+  }
+  return result;
 }
 
-export function updateScheduleIssue(id: string, patch: Partial<ScheduleIssue>) {
+// ─── Issues ────────────────────────────────────────────────────
+
+export function getIssues(): JournalIssue[] {
+  return readStore().issues;
+}
+
+/** @deprecated */
+export const getScheduleIssues = getIssues;
+
+export function getIssueById(id: string): JournalIssue | undefined {
+  return getIssues().find((i) => i.id === id);
+}
+
+export function getManuscriptsForIssue(issueId: string): Manuscript[] {
+  return getManuscripts().filter((m) => m.issueId === issueId);
+}
+
+export function updateIssue(id: string, patch: Partial<JournalIssue>) {
   const data = readStore();
-  data.scheduleIssues = data.scheduleIssues.map((i) =>
-    i.id === id ? { ...i, ...patch } : i
-  );
+  data.issues = data.issues.map((i) => (i.id === id ? { ...i, ...patch } : i));
   writeStore(data);
 }
 
-export function addScheduleIssue(issue: ScheduleIssue) {
+/** @deprecated */
+export const updateScheduleIssue = updateIssue;
+
+export function addIssue(issue: JournalIssue) {
   const data = readStore();
-  data.scheduleIssues.unshift(issue);
+  data.issues.unshift(issue);
   writeStore(data);
 }
 
-export function deleteScheduleIssue(id: string) {
+/** @deprecated */
+export const addScheduleIssue = addIssue;
+
+export function deleteIssue(id: string) {
   const data = readStore();
-  data.scheduleIssues = data.scheduleIssues.filter((i) => i.id !== id);
+  data.issues = data.issues.filter((i) => i.id !== id);
   writeStore(data);
 }
 
-export function getPublications(): Publication[] {
-  return readStore().publications;
-}
+/** @deprecated */
+export const deleteScheduleIssue = deleteIssue;
 
-export function getPublicPublications(): Publication[] {
-  return getPublications().filter((p) => p.status === "published");
-}
-
-export function updatePublication(id: string, patch: Partial<Publication>) {
-  const data = readStore();
-  data.publications = data.publications.map((p) =>
-    p.id === id ? { ...p, ...patch } : p
-  );
-  writeStore(data);
-}
+// ─── Analytics ─────────────────────────────────────────────────
 
 export function getDashboardStats() {
-  const { submissions, reviewers, publications } = readStore();
+  const { manuscripts, reviewers } = readStore();
   return {
-    totalSubmissions: submissions.length,
-    underReview: submissions.filter((s) =>
-      ["submitted", "under_review", "revision"].includes(s.status)
+    totalSubmissions: manuscripts.length,
+    underReview: manuscripts.filter((m) =>
+      ["screening", "under_review", "revision_required"].includes(m.status)
     ).length,
-    publishedPapers: publications.filter((p) => p.status === "published").length,
+    publishedPapers: manuscripts.filter((m) => m.status === "published").length,
     activeReviewers: reviewers.filter((r) => r.availability !== "unavailable").length,
   };
 }
 
 export function getStatusDistribution() {
-  const submissions = getSubmissions();
-  const counts: Record<string, number> = {
-    submitted: 0,
-    under_review: 0,
-    revision: 0,
-    accepted: 0,
-    published: 0,
+  const colors: Record<string, string> = {
+    new_submission: "#1E22AA",
+    screening: "#6366F1",
+    under_review: "#F4D400",
+    revision_required: "#FF8C00",
+    accepted: "#22C55E",
+    scheduled: "#8B5CF6",
+    published: "#FF0000",
+    archived: "#6B7280",
   };
-  for (const s of submissions) {
-    if (counts[s.status] !== undefined) counts[s.status]++;
-  }
-  return [
-    { name: "Submitted", value: counts.submitted, color: "#1E22AA" },
-    { name: "Under Review", value: counts.under_review, color: "#F4D400" },
-    { name: "Revision", value: counts.revision, color: "#FF8C00" },
-    { name: "Accepted", value: counts.accepted, color: "#22C55E" },
-    { name: "Published", value: counts.published, color: "#FF0000" },
-  ];
+
+  return MANUSCRIPT_WORKFLOW.map((status) => ({
+    name: status.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
+    value: getManuscripts().filter((m) => m.status === status).length,
+    color: colors[status],
+  })).filter((d) => d.value > 0);
 }
 
 export function resetStore() {
   if (!isBrowser()) return;
   localStorage.removeItem(STORE_KEY);
+  localStorage.removeItem(LEGACY_STORE_KEY);
   readStore();
 }
 

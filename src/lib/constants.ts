@@ -1,3 +1,5 @@
+import type { ManuscriptStatus } from "./types";
+
 export const BRAND = {
   name: "Philippine Academy of Management",
   shortName: "PAoM",
@@ -22,29 +24,99 @@ export const PUBLIC_NAV = [
   { href: "/about", label: "About" },
 ] as const;
 
-export const ADMIN_NAV = [
-  { href: "/admin", label: "Dashboard", icon: "LayoutDashboard" },
-  { href: "/admin/submissions", label: "Submissions", icon: "FileText" },
-  { href: "/admin/reviewers", label: "Reviewers", icon: "Users" },
-  { href: "/admin/schedule", label: "Schedule", icon: "Calendar" },
-  { href: "/admin/publications", label: "Publications", icon: "BookOpen" },
-  { href: "/admin/analytics", label: "Analytics", icon: "BarChart3" },
-  { href: "/admin/settings", label: "Settings", icon: "Settings" },
-] as const;
+export const MANUSCRIPT_WORKFLOW: ManuscriptStatus[] = [
+  "new_submission",
+  "screening",
+  "under_review",
+  "revision_required",
+  "accepted",
+  "scheduled",
+  "published",
+  "archived",
+];
 
-export const STATUS_LABELS: Record<string, string> = {
-  draft: "Draft",
-  submitted: "Submitted",
+export const STATUS_LABELS: Record<ManuscriptStatus | string, string> = {
+  new_submission: "New Submission",
+  screening: "Screening",
   under_review: "Under Review",
-  revision: "Revision",
+  revision_required: "Revision Required",
   accepted: "Accepted",
+  scheduled: "Scheduled",
   published: "Published",
+  archived: "Archived",
+  // legacy mappings
+  draft: "New Submission",
+  submitted: "New Submission",
+  revision: "Revision Required",
 };
 
+export const RESEARCH_AREAS = [
+  "Strategic Management",
+  "Leadership",
+  "Entrepreneurship",
+  "Finance",
+  "Marketing",
+  "Human Resources",
+  "Operations Management",
+  "Supply Chain",
+  "Corporate Governance",
+  "Digital Transformation",
+  "International Business",
+  "Project Management",
+] as const;
+
 export const KANBAN_COLUMNS = [
-  "submitted",
+  "new_submission",
+  "screening",
   "under_review",
-  "revision",
+  "revision_required",
   "accepted",
+  "scheduled",
   "published",
 ] as const;
+
+export type AdminNavItem = {
+  label: string;
+  href?: string;
+  icon?: string;
+  children?: { label: string; href: string; status?: ManuscriptStatus }[];
+};
+
+export const ADMIN_NAV: AdminNavItem[] = [
+  { label: "Dashboard", href: "/admin", icon: "LayoutDashboard" },
+  {
+    label: "Manuscripts",
+    icon: "FileText",
+    children: [
+      { label: "All Manuscripts", href: "/admin/manuscripts" },
+      { label: "New Submissions", href: "/admin/manuscripts?status=new_submission", status: "new_submission" },
+      { label: "Screening", href: "/admin/manuscripts?status=screening", status: "screening" },
+      { label: "Under Review", href: "/admin/manuscripts?status=under_review", status: "under_review" },
+      { label: "Revision Required", href: "/admin/manuscripts?status=revision_required", status: "revision_required" },
+      { label: "Accepted", href: "/admin/manuscripts?status=accepted", status: "accepted" },
+      { label: "Scheduled", href: "/admin/manuscripts?status=scheduled", status: "scheduled" },
+      { label: "Published", href: "/admin/manuscripts?status=published", status: "published" },
+      { label: "Archived", href: "/admin/manuscripts?status=archived", status: "archived" },
+    ],
+  },
+  {
+    label: "Reviewers",
+    icon: "Users",
+    children: [
+      { label: "All Reviewers", href: "/admin/reviewers" },
+      { label: "Assignments", href: "/admin/reviewers/assignments" },
+      { label: "Performance", href: "/admin/reviewers/performance" },
+    ],
+  },
+  {
+    label: "Issues & Schedule",
+    icon: "Calendar",
+    children: [
+      { label: "Upcoming Issues", href: "/admin/issues" },
+      { label: "Published Issues", href: "/admin/issues/published" },
+    ],
+  },
+  { label: "Publications", href: "/admin/publications", icon: "BookOpen" },
+  { label: "Analytics", href: "/admin/analytics", icon: "BarChart3" },
+  { label: "Settings", href: "/admin/settings", icon: "Settings" },
+];

@@ -1,10 +1,5 @@
-import type {
-  DashboardStats,
-  Publication,
-  Reviewer,
-  ScheduleIssue,
-  Submission,
-} from "./types";
+import type { DashboardStats, JournalIssue, Manuscript, Reviewer } from "./types";
+import { inferResearchArea } from "./manuscript-utils";
 
 export const publicStats: DashboardStats = {
   totalSubmissions: 1247,
@@ -13,15 +8,27 @@ export const publicStats: DashboardStats = {
   activeReviewers: 48,
 };
 
-export const adminStats: DashboardStats = {
-  totalSubmissions: 1247,
-  underReview: 86,
-  publishedPapers: 892,
-  activeReviewers: 48,
-};
+function m(partial: Omit<Manuscript, "researchArea" | "updatedAt" | "assignedReviewerIds" | "manuscriptId"> & {
+  researchArea?: string;
+  updatedAt?: string;
+  assignedReviewerIds?: string[];
+  manuscriptId?: string;
+  reviewerId?: string;
+}): Manuscript {
+  const keywords = partial.keywords;
+  return {
+    ...partial,
+    manuscriptId: partial.manuscriptId ?? partial.trackingCode,
+    researchArea: partial.researchArea ?? inferResearchArea(keywords),
+    updatedAt: partial.updatedAt ?? partial.submittedAt,
+    assignedReviewerIds:
+      partial.assignedReviewerIds ??
+      (partial.reviewerId ? [partial.reviewerId] : []),
+  };
+}
 
-export const submissions: Submission[] = [
-  {
+export const seedManuscripts: Manuscript[] = [
+  m({
     id: "1",
     trackingCode: "PAOM-2026-A3F9K2",
     title: "Digital Transformation in Philippine SMEs: A Longitudinal Study",
@@ -30,12 +37,14 @@ export const submissions: Submission[] = [
     abstract:
       "This study examines the adoption patterns of digital technologies among small and medium enterprises in the Philippines over a five-year period.",
     keywords: ["digital transformation", "SMEs", "Philippines"],
+    researchArea: "Digital Transformation",
     status: "under_review",
     submittedAt: "2026-01-15",
+    updatedAt: "2026-02-10",
     reviewerId: "r1",
     email: "maria.santos@up.edu.ph",
-  },
-  {
+  }),
+  m({
     id: "2",
     trackingCode: "PAOM-2026-B7X2M1",
     title: "Leadership Styles and Organizational Resilience Post-Pandemic",
@@ -44,11 +53,12 @@ export const submissions: Submission[] = [
     abstract:
       "An empirical analysis of how transformational and servant leadership styles influenced organizational resilience during and after the COVID-19 pandemic.",
     keywords: ["leadership", "resilience", "pandemic"],
-    status: "submitted",
+    researchArea: "Leadership",
+    status: "new_submission",
     submittedAt: "2026-02-28",
     email: "ana.reyes@ateneo.edu",
-  },
-  {
+  }),
+  m({
     id: "3",
     trackingCode: "PAOM-2026-C1P8N4",
     title: "Sustainable Supply Chain Practices in ASEAN Manufacturing",
@@ -57,12 +67,14 @@ export const submissions: Submission[] = [
     abstract:
       "This paper investigates sustainable supply chain management practices adopted by manufacturing firms across ASEAN member states.",
     keywords: ["supply chain", "sustainability", "ASEAN"],
-    status: "revision",
+    researchArea: "Supply Chain",
+    status: "revision_required",
     submittedAt: "2025-11-20",
+    updatedAt: "2026-01-05",
     reviewerId: "r2",
     email: "carlos.m@dlsu.edu.ph",
-  },
-  {
+  }),
+  m({
     id: "4",
     trackingCode: "PAOM-2025-D4Q6R9",
     title: "Corporate Governance and Firm Performance in Listed Philippine Companies",
@@ -71,12 +83,14 @@ export const submissions: Submission[] = [
     abstract:
       "A quantitative study examining the relationship between corporate governance indices and financial performance metrics.",
     keywords: ["corporate governance", "firm performance"],
+    researchArea: "Corporate Governance",
     status: "accepted",
     submittedAt: "2025-09-10",
+    updatedAt: "2026-01-20",
     reviewerId: "r3",
     email: "r.garcia@ust.edu.ph",
-  },
-  {
+  }),
+  m({
     id: "5",
     trackingCode: "PAOM-2025-E2S5T7",
     title: "Entrepreneurial Ecosystem Development in Metro Manila",
@@ -85,12 +99,16 @@ export const submissions: Submission[] = [
     abstract:
       "This research maps the entrepreneurial ecosystem in Metro Manila and identifies key enablers and barriers to startup growth.",
     keywords: ["entrepreneurship", "ecosystem", "startups"],
+    researchArea: "Entrepreneurship",
     status: "published",
     submittedAt: "2025-06-01",
+    updatedAt: "2025-12-01",
     reviewerId: "r1",
+    issueId: "s3",
+    doi: "10.1234/paom.2025.001",
     email: "p.lim@aim.edu",
-  },
-  {
+  }),
+  m({
     id: "6",
     trackingCode: "PAOM-2026-F8U3V2",
     title: "Work-Life Balance Policies in Hybrid Work Environments",
@@ -99,12 +117,49 @@ export const submissions: Submission[] = [
     abstract:
       "An exploratory study on the effectiveness of work-life balance policies in organizations adopting hybrid work models.",
     keywords: ["work-life balance", "hybrid work", "HR policies"],
-    status: "under_review",
+    researchArea: "Human Resources",
+    status: "screening",
     submittedAt: "2026-03-01",
-    reviewerId: "r4",
     email: "g.fernandez@usc.edu.ph",
-  },
+  }),
+  m({
+    id: "7",
+    trackingCode: "PAOM-2025-G1H4J6",
+    title: "Corporate Social Responsibility and Brand Equity in Filipino Firms",
+    authors: ["Angela Morales"],
+    affiliation: "De La Salle University",
+    abstract:
+      "Examines the relationship between CSR initiatives and brand equity among publicly listed Filipino corporations.",
+    keywords: ["CSR", "brand equity", "marketing"],
+    researchArea: "Marketing",
+    status: "published",
+    submittedAt: "2025-04-15",
+    updatedAt: "2025-11-15",
+    issueId: "s3",
+    doi: "10.1234/paom.2025.002",
+    email: "a.morales@dlsu.edu.ph",
+  }),
+  m({
+    id: "8",
+    trackingCode: "PAOM-2026-H2K5L8",
+    title: "Agile Project Management in Government IT Initiatives",
+    authors: ["Ricardo Santos", "Liza Gomez"],
+    affiliation: "University of the Philippines",
+    abstract:
+      "A case study analysis of agile methodologies applied to government digital transformation projects.",
+    keywords: ["agile", "government", "IT"],
+    researchArea: "Project Management",
+    status: "scheduled",
+    submittedAt: "2025-10-01",
+    updatedAt: "2026-02-15",
+    issueId: "s2",
+    reviewerId: "r4",
+    email: "r.santos@up.edu.ph",
+  }),
 ];
+
+/** @deprecated */
+export const submissions = seedManuscripts;
 
 export const reviewers: Reviewer[] = [
   {
@@ -168,69 +223,7 @@ export const reviewers: Reviewer[] = [
   },
 ];
 
-export const publications: Publication[] = [
-  {
-    id: "p1",
-    title: "Entrepreneurial Ecosystem Development in Metro Manila",
-    authors: ["Patricia Lim", "Mark Villanueva"],
-    year: 2025,
-    category: "Entrepreneurship",
-    status: "published",
-    doi: "10.1234/paom.2025.001",
-    keywords: ["entrepreneurship", "ecosystem"],
-  },
-  {
-    id: "p2",
-    title: "Corporate Social Responsibility and Brand Equity in Filipino Firms",
-    authors: ["Angela Morales"],
-    year: 2025,
-    category: "Marketing",
-    status: "published",
-    doi: "10.1234/paom.2025.002",
-    keywords: ["CSR", "brand equity"],
-  },
-  {
-    id: "p3",
-    title: "Agile Project Management in Government IT Initiatives",
-    authors: ["Ricardo Santos", "Liza Gomez"],
-    year: 2024,
-    category: "Project Management",
-    status: "published",
-    doi: "10.1234/paom.2024.015",
-    keywords: ["agile", "government", "IT"],
-  },
-  {
-    id: "p4",
-    title: "Financial Inclusion Through Fintech in Rural Philippines",
-    authors: ["Henry Bautista"],
-    year: 2024,
-    category: "Finance",
-    status: "published",
-    doi: "10.1234/paom.2024.022",
-    keywords: ["fintech", "financial inclusion"],
-  },
-  {
-    id: "p5",
-    title: "Women in Leadership: Barriers and Enablers in Southeast Asia",
-    authors: ["Carmen Flores", "Nina Aquino"],
-    year: 2024,
-    category: "Leadership",
-    status: "published",
-    doi: "10.1234/paom.2024.031",
-    keywords: ["women", "leadership", "Southeast Asia"],
-  },
-  {
-    id: "p6",
-    title: "Corporate Governance and Firm Performance in Listed Philippine Companies",
-    authors: ["Roberto Garcia"],
-    year: 2026,
-    category: "Corporate Governance",
-    status: "in_press",
-    keywords: ["corporate governance", "performance"],
-  },
-];
-
-export const scheduleIssues: ScheduleIssue[] = [
+export const seedIssues: JournalIssue[] = [
   {
     id: "s1",
     volume: "12",
@@ -273,6 +266,9 @@ export const scheduleIssues: ScheduleIssue[] = [
   },
 ];
 
+/** @deprecated */
+export const scheduleIssues = seedIssues;
+
 export const monthlySubmissions = [
   { month: "Oct", count: 42 },
   { month: "Nov", count: 58 },
@@ -280,12 +276,4 @@ export const monthlySubmissions = [
   { month: "Jan", count: 67 },
   { month: "Feb", count: 81 },
   { month: "Mar", count: 74 },
-];
-
-export const statusDistribution = [
-  { name: "Submitted", value: 24, color: "#1E22AA" },
-  { name: "Under Review", value: 86, color: "#F4D400" },
-  { name: "Revision", value: 18, color: "#FF8C00" },
-  { name: "Accepted", value: 32, color: "#22C55E" },
-  { name: "Published", value: 892, color: "#FF0000" },
 ];

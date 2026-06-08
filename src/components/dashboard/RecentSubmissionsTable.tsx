@@ -1,16 +1,16 @@
 "use client";
 
-import type { Submission } from "@/lib/types";
+import type { Manuscript } from "@/lib/types";
 import { STATUS_LABELS } from "@/lib/constants";
 import { formatDate } from "@/lib/utils";
 import { DataTable, type Column } from "@/components/ui/DataTable";
 import { StatusBadge } from "@/components/ui/Badge";
 
-const columns: Column<Submission>[] = [
+const columns: Column<Manuscript>[] = [
   {
-    key: "trackingCode",
-    header: "Tracking Code",
-    render: (s) => <span className="font-mono text-xs">{s.trackingCode}</span>,
+    key: "manuscriptId",
+    header: "Manuscript ID",
+    render: (s) => <span className="font-mono text-xs">{s.manuscriptId}</span>,
   },
   {
     key: "title",
@@ -39,7 +39,7 @@ const columns: Column<Submission>[] = [
 ];
 
 interface RecentSubmissionsTableProps {
-  submissions: Submission[];
+  submissions: Manuscript[];
 }
 
 export function RecentSubmissionsTable({ submissions }: RecentSubmissionsTableProps) {

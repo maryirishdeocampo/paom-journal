@@ -17,5 +17,12 @@ export function useStore() {
     return () => window.removeEventListener(STORE_UPDATE_EVENT, refresh);
   }, [refresh]);
 
-  return { ...data, refresh };
+  return {
+    ...data,
+    /** @deprecated use manuscripts */
+    submissions: data.manuscripts,
+    /** @deprecated use issues */
+    scheduleIssues: data.issues,
+    refresh,
+  };
 }

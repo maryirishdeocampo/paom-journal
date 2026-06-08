@@ -1,10 +1,16 @@
-export type SubmissionStatus =
-  | "draft"
-  | "submitted"
+/** Unified manuscript workflow statuses */
+export type ManuscriptStatus =
+  | "new_submission"
+  | "screening"
   | "under_review"
-  | "revision"
+  | "revision_required"
   | "accepted"
-  | "published";
+  | "scheduled"
+  | "published"
+  | "archived";
+
+/** @deprecated Use ManuscriptStatus */
+export type SubmissionStatus = ManuscriptStatus;
 
 export type Role = "visitor" | "submitter" | "reviewer" | "admin";
 
@@ -19,23 +25,32 @@ export interface SubmissionManuscripts {
   docx?: ManuscriptFile;
 }
 
-export interface Submission {
+/** Single manuscript record — moves through workflow without duplication */
+export interface Manuscript {
   id: string;
+  manuscriptId: string;
   trackingCode: string;
   title: string;
   authors: string[];
   affiliation: string;
   abstract: string;
   keywords: string[];
-  status: SubmissionStatus;
+  researchArea: string;
+  status: ManuscriptStatus;
   submittedAt: string;
-  reviewerId?: string;
+  updatedAt: string;
+  assignedReviewerIds: string[];
+  issueId?: string;
+  doi?: string;
   email?: string;
   /** @deprecated use manuscripts */
   manuscript?: ManuscriptFile;
   manuscripts?: SubmissionManuscripts;
   suggestedReviewerIds?: string[];
 }
+
+/** Alias for backward compatibility */
+export type Submission = Manuscript;
 
 export interface Reviewer {
   id: string;
@@ -48,18 +63,7 @@ export interface Reviewer {
   deadline?: string;
 }
 
-export interface Publication {
-  id: string;
-  title: string;
-  authors: string[];
-  year: number;
-  category: string;
-  status: "published" | "in_press";
-  doi?: string;
-  keywords: string[];
-}
-
-export interface ScheduleIssue {
+export interface JournalIssue {
   id: string;
   volume: string;
   issue: string;
@@ -69,6 +73,9 @@ export interface ScheduleIssue {
   status: "planning" | "open" | "review" | "production" | "published";
   isPublic: boolean;
 }
+
+/** @deprecated Use JournalIssue */
+export type ScheduleIssue = JournalIssue;
 
 export interface DashboardStats {
   totalSubmissions: number;
@@ -87,8 +94,7 @@ export interface SubmissionFormData {
 }
 
 export interface StoreData {
-  submissions: Submission[];
+  manuscripts: Manuscript[];
   reviewers: Reviewer[];
-  scheduleIssues: ScheduleIssue[];
-  publications: Publication[];
+  issues: JournalIssue[];
 }

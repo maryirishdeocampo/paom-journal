@@ -9,7 +9,7 @@ import { getStatusDistribution } from "@/lib/store";
 import { monthlySubmissions } from "@/lib/mock-data";
 
 export default function AdminAnalyticsPage() {
-  const { submissions } = useStore();
+  const { manuscripts } = useStore();
 
   return (
     <AdminShell title="Analytics">
@@ -18,14 +18,14 @@ export default function AdminAnalyticsPage() {
           <StatCard label="Avg. Review Time" value="28 days" icon={Clock} accent="blue" />
           <StatCard
             label="Acceptance Rate"
-            value={`${submissions.length ? Math.round((submissions.filter((s) => s.status === "accepted" || s.status === "published").length / submissions.length) * 100) : 0}%`}
+            value={`${manuscripts.length ? Math.round((manuscripts.filter((m) => m.status === "accepted" || m.status === "published").length / manuscripts.length) * 100) : 0}%`}
             icon={TrendingUp}
             accent="gold"
           />
-          <StatCard label="Total Submissions" value={submissions.length} icon={FileText} accent="red" />
+          <StatCard label="Total Manuscripts" value={manuscripts.length} icon={FileText} accent="red" />
           <StatCard
             label="Published"
-            value={submissions.filter((s) => s.status === "published").length}
+            value={manuscripts.filter((m) => m.status === "published").length}
             icon={BookOpen}
             accent="blue"
           />
