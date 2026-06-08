@@ -1,8 +1,23 @@
+"use client";
+
 import { AdminShell } from "@/components/admin/AdminShell";
+import { Button } from "@/components/ui/Button";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
+import { resetStore } from "@/lib/store";
 
 export default function AdminSettingsPage() {
+  const handleReset = () => {
+    if (
+      confirm(
+        "Reset all data to defaults? This will clear submissions, edits, and uploaded files stored in this browser."
+      )
+    ) {
+      resetStore();
+      window.location.reload();
+    }
+  };
+
   return (
     <AdminShell title="Settings">
       <div className="mx-auto max-w-2xl space-y-6">
@@ -21,40 +36,21 @@ export default function AdminSettingsPage() {
               label="Contact Email"
               defaultValue="journal@paom.org.ph"
             />
-            <Input
-              id="issn"
-              label="ISSN"
-              defaultValue="0000-0000"
-            />
+            <Input id="issn" label="ISSN" defaultValue="0000-0000" />
           </div>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle>Integrations</CardTitle>
+            <CardTitle>Data Management</CardTitle>
           </CardHeader>
-          <div className="space-y-4">
-            <Input
-              id="supabase-url"
-              label="Supabase URL"
-              placeholder="https://your-project.supabase.co"
-            />
-            <Input
-              id="supabase-key"
-              label="Supabase Anon Key"
-              placeholder="eyJ..."
-              type="password"
-            />
-            <Input
-              id="sheets-id"
-              label="Google Sheets ID"
-              placeholder="1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
-            />
-          </div>
-          <p className="mt-4 text-xs text-muted">
-            Configure backend integrations in .env.local. See README for setup
-            instructions.
+          <p className="mb-4 text-sm text-muted">
+            All admin changes are saved in your browser (localStorage). For
+            multi-device access, connect Supabase in a future update.
           </p>
+          <Button variant="outline" onClick={handleReset}>
+            Reset to Demo Data
+          </Button>
         </Card>
       </div>
     </AdminShell>

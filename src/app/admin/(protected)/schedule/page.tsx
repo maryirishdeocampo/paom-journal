@@ -1,9 +1,13 @@
+"use client";
+
 import { AdminShell } from "@/components/admin/AdminShell";
-import { Timeline } from "@/components/schedule/Timeline";
+import { ScheduleEditor } from "@/components/admin/ScheduleEditor";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
-import { scheduleIssues } from "@/lib/mock-data";
+import { useStore } from "@/hooks/useStore";
 
 export default function AdminSchedulePage() {
+  const { scheduleIssues, refresh } = useStore();
+
   return (
     <AdminShell title="Publication Schedule">
       <Card className="mb-6">
@@ -11,11 +15,11 @@ export default function AdminSchedulePage() {
           <CardTitle>Issue Tracker</CardTitle>
         </CardHeader>
         <p className="text-sm text-muted">
-          Manage journal volumes, submission deadlines, and production milestones.
-          Internal planning issues are visible here but hidden from the public schedule.
+          Add, edit, or delete journal issues. Toggle &ldquo;Show on public site&rdquo;
+          to control visibility. Changes save automatically to your browser.
         </p>
       </Card>
-      <Timeline issues={scheduleIssues} showInternal />
+      <ScheduleEditor issues={scheduleIssues} onUpdated={refresh} />
     </AdminShell>
   );
 }

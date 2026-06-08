@@ -9,8 +9,6 @@ export const PUBLIC_NAV = [
   { href: "/submit", label: "Submit" },
   { href: "/my-submissions", label: "My Submissions" },
   { href: "/archive", label: "Publications" },
-  { href: "/schedule", label: "Schedule" },
-  { href: "/reviewers", label: "Reviewers" },
   { href: "/about", label: "About" },
 ] as const;
 

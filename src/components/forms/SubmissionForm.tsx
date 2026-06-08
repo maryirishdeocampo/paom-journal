@@ -11,8 +11,10 @@ import { Input, Textarea } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { extractKeywordsFromAbstract, mergeKeywords } from "@/lib/keywords";
-import { reviewers } from "@/lib/mock-data";
-import { suggestReviewers, type ReviewerSuggestion } from "@/lib/reviewer-matching";
+import { runSubmissionAutomation } from "@/lib/submission-automation";
+import { addSubmission } from "@/lib/store";
+import type { ReviewerSuggestion } from "@/lib/reviewer-matching";
+import type { ManuscriptFile } from "@/lib/types";
 import { generateTrackingCode } from "@/lib/utils";
 
 const schema = z.object({
@@ -33,6 +35,8 @@ export function SubmissionForm() {
   const [showSuccess, setShowSuccess] = useState(false);
   const [trackingCode, setTrackingCode] = useState("");
   const [fileName, setFileName] = useState("");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [fileError, setFileError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [suggestedKeywords, setSuggestedKeywords] = useState<string[]>([]);
   const [reviewerSuggestions, setReviewerSuggestions] = useState<ReviewerSuggestion[]>([]);
@@ -65,47 +69,70 @@ export function SubmissionForm() {
     setValue("keywords", merged.join(", "));
   };
 
+  const readFileAsDataUrl = (file: File): Promise<ManuscriptFile> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () =>
+        resolve({
+          fileName: file.name,
+          fileType: file.type || "application/octet-stream",
+          dataUrl: reader.result as string,
+        });
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+
   const onSubmit = async (data: FormData) => {
     setIsSubmitting(true);
+    setFileError("");
     const code = generateTrackingCode();
 
-    const extracted = extractKeywordsFromAbstract(data.abstract, data.title);
-    const keywords = mergeKeywords(data.keywords ?? "", extracted);
-    const suggestions = suggestReviewers(keywords, reviewers, 3);
+    const automation = runSubmissionAutomation({
+      title: data.title,
+      abstract: data.abstract,
+      keywords: data.keywords,
+    });
 
-    setFinalKeywords(keywords);
-    setReviewerSuggestions(suggestions);
+    setFinalKeywords(automation.keywords);
+    setReviewerSuggestions(automation.suggestedReviewers);
 
-    const record = {
-      ...data,
-      keywords: keywords.join(", "),
-      extractedKeywords: extracted,
-      suggestedReviewers: suggestions.map((s) => ({
-        id: s.reviewer.id,
-        name: s.reviewer.name,
-        affiliation: s.reviewer.affiliation,
-        matchedExpertise: s.matchedExpertise,
-        score: s.score,
-      })),
-      trackingCode: code,
-      fileName,
-      submittedAt: new Date().toISOString(),
-      status: "submitted",
-    };
-
-    try {
-      const stored = JSON.parse(localStorage.getItem("paom-submissions") ?? "[]");
-      stored.push(record);
-      localStorage.setItem("paom-submissions", JSON.stringify(stored));
-    } catch {
-      // localStorage unavailable
+    let manuscript: ManuscriptFile | undefined;
+    if (selectedFile) {
+      if (selectedFile.size > 4 * 1024 * 1024) {
+        setFileError("File must be under 4MB for browser storage. Try a smaller PDF.");
+        setIsSubmitting(false);
+        return;
+      }
+      try {
+        manuscript = await readFileAsDataUrl(selectedFile);
+      } catch {
+        setFileError("Could not read file. Please try again.");
+        setIsSubmitting(false);
+        return;
+      }
     }
+
+    addSubmission({
+      id: code,
+      trackingCode: code,
+      title: data.title,
+      authors: data.authors.split(",").map((a) => a.trim()),
+      affiliation: data.affiliation,
+      abstract: data.abstract,
+      keywords: automation.keywords,
+      status: "submitted",
+      submittedAt: new Date().toISOString(),
+      email: data.email,
+      manuscript,
+      suggestedReviewerIds: automation.suggestedReviewers.map((s) => s.reviewer.id),
+    });
 
     setTrackingCode(code);
     setShowSuccess(true);
     setIsSubmitting(false);
     reset();
     setFileName("");
+    setSelectedFile(null);
     setSuggestedKeywords([]);
   };
 
@@ -229,14 +256,20 @@ export function SubmissionForm() {
             <p className="text-sm font-medium">
               {fileName || "Click to upload manuscript (PDF, DOCX)"}
             </p>
-            <p className="mt-1 text-xs text-muted">Maximum file size: 10MB</p>
+            <p className="mt-1 text-xs text-muted">PDF or DOCX, max 4MB</p>
             <input
               type="file"
               className="hidden"
               accept=".pdf,.doc,.docx"
-              onChange={(e) => setFileName(e.target.files?.[0]?.name ?? "")}
+              onChange={(e) => {
+                const file = e.target.files?.[0] ?? null;
+                setSelectedFile(file);
+                setFileName(file?.name ?? "");
+                setFileError("");
+              }}
             />
           </label>
+          {fileError && <p className="mt-2 text-xs text-paom-red">{fileError}</p>}
         </Card>
 
         <div className="flex justify-end">

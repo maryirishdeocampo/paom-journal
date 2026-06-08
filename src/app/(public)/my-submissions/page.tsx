@@ -9,63 +9,23 @@ import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { StatusBadge } from "@/components/ui/Badge";
 import { STATUS_LABELS } from "@/lib/constants";
-import { submissions } from "@/lib/mock-data";
+import { getSubmissionByCode } from "@/lib/store";
 import { formatDate } from "@/lib/utils";
+import type { Submission } from "@/lib/types";
 
 function MySubmissionsContent() {
   const searchParams = useSearchParams();
   const initialCode = searchParams.get("code") ?? "";
   const [code, setCode] = useState(initialCode);
   const [searched, setSearched] = useState(!!initialCode);
-  const [result, setResult] = useState(
-    initialCode
-      ? submissions.find(
-          (s) => s.trackingCode.toUpperCase() === initialCode.toUpperCase()
-        ) ?? null
-      : null
+  const [result, setResult] = useState<Submission | null | undefined>(
+    initialCode ? getSubmissionByCode(initialCode) ?? null : null
   );
 
   const handleSearch = () => {
     setSearched(true);
-    const found =
-      submissions.find(
-        (s) => s.trackingCode.toUpperCase() === code.toUpperCase()
-      ) ?? findLocalSubmission(code);
-    setResult(found ?? null);
+    setResult(getSubmissionByCode(code) ?? null);
   };
-
-  function findLocalSubmission(trackingCode: string) {
-    try {
-      const stored: Array<{
-        trackingCode: string;
-        title: string;
-        authors: string;
-        affiliation: string;
-        abstract: string;
-        keywords: string;
-        submittedAt: string;
-      }> = JSON.parse(localStorage.getItem("paom-submissions") ?? "[]");
-
-      const match = stored.find(
-        (s) => s.trackingCode.toUpperCase() === trackingCode.toUpperCase()
-      );
-      if (!match) return null;
-
-      return {
-        id: match.trackingCode,
-        trackingCode: match.trackingCode,
-        title: match.title,
-        authors: match.authors.split(",").map((a) => a.trim()),
-        affiliation: match.affiliation,
-        abstract: match.abstract,
-        keywords: match.keywords.split(",").map((k) => k.trim()),
-        status: "submitted" as const,
-        submittedAt: match.submittedAt,
-      };
-    } catch {
-      return null;
-    }
-  }
 
   return (
     <PageTransition>
@@ -116,9 +76,7 @@ function MySubmissionsContent() {
                 </p>
                 <div className="mt-4 flex flex-wrap gap-4 border-t border-border pt-4 text-sm text-muted">
                   <span>Submitted: {formatDate(result.submittedAt)}</span>
-                  <span>
-                    Keywords: {result.keywords.join(", ")}
-                  </span>
+                  <span>Keywords: {result.keywords.join(", ")}</span>
                 </div>
               </Card>
             ) : (
@@ -126,9 +84,6 @@ function MySubmissionsContent() {
                 <p className="text-muted">
                   No submission found with tracking code &ldquo;{code}&rdquo;.
                   Please check the code and try again.
-                </p>
-                <p className="mt-2 text-xs text-muted">
-                  Demo codes: PAOM-2026-A3F9K2, PAOM-2026-B7X2M1
                 </p>
               </Card>
             )}

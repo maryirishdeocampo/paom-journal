@@ -4,8 +4,7 @@ import { useMemo, useState } from "react";
 import { PageTransition } from "@/components/public/PageTransition";
 import { DataTable, type Column } from "@/components/ui/DataTable";
 import { SearchFilter, SelectFilter } from "@/components/ui/SearchFilter";
-import { StatusBadge } from "@/components/ui/Badge";
-import { publications } from "@/lib/mock-data";
+import { useStore } from "@/hooks/useStore";
 import type { Publication } from "@/lib/types";
 
 const columns: Column<Publication>[] = [
@@ -32,15 +31,6 @@ const columns: Column<Publication>[] = [
     ),
   },
   {
-    key: "status",
-    header: "Status",
-    render: (p) => (
-      <StatusBadge variant={p.status === "published" ? "published" : "in_press"}>
-        {p.status === "published" ? "Published" : "In Press"}
-      </StatusBadge>
-    ),
-  },
-  {
     key: "doi",
     header: "DOI",
     render: (p) =>
@@ -52,17 +42,19 @@ const columns: Column<Publication>[] = [
   },
 ];
 
-const years = [...new Set(publications.map((p) => p.year))].sort((a, b) => b - a);
-const categories = [...new Set(publications.map((p) => p.category))];
-
 export default function ArchivePage() {
+  const { publications } = useStore();
+  const published = publications.filter((p) => p.status === "published");
+
   const [search, setSearch] = useState("");
   const [year, setYear] = useState("all");
   const [category, setCategory] = useState("all");
-  const [status, setStatus] = useState("all");
+
+  const years = [...new Set(published.map((p) => p.year))].sort((a, b) => b - a);
+  const categories = [...new Set(published.map((p) => p.category))];
 
   const filtered = useMemo(() => {
-    return publications.filter((p) => {
+    return published.filter((p) => {
       const matchesSearch =
         !search ||
         p.title.toLowerCase().includes(search.toLowerCase()) ||
@@ -70,10 +62,9 @@ export default function ArchivePage() {
         p.keywords.some((k) => k.toLowerCase().includes(search.toLowerCase()));
       const matchesYear = year === "all" || p.year === Number(year);
       const matchesCategory = category === "all" || p.category === category;
-      const matchesStatus = status === "all" || p.status === status;
-      return matchesSearch && matchesYear && matchesCategory && matchesStatus;
+      return matchesSearch && matchesYear && matchesCategory;
     });
-  }, [search, year, category, status]);
+  }, [published, search, year, category]);
 
   return (
     <PageTransition>
@@ -81,7 +72,7 @@ export default function ArchivePage() {
         <div className="mb-8">
           <h1 className="text-3xl font-bold">Publications Archive</h1>
           <p className="mt-2 text-muted">
-            Browse published and in-press research from the PAoM Journal.
+            Browse published research from the PAoM Journal.
           </p>
         </div>
 
@@ -108,16 +99,6 @@ export default function ArchivePage() {
                 options={[
                   { value: "all", label: "All Categories" },
                   ...categories.map((c) => ({ value: c, label: c })),
-                ]}
-              />
-              <SelectFilter
-                label="Status"
-                value={status}
-                onChange={setStatus}
-                options={[
-                  { value: "all", label: "All Status" },
-                  { value: "published", label: "Published" },
-                  { value: "in_press", label: "In Press" },
                 ]}
               />
             </>

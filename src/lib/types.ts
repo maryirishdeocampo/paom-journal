@@ -8,6 +8,12 @@ export type SubmissionStatus =
 
 export type Role = "visitor" | "submitter" | "reviewer" | "admin";
 
+export interface ManuscriptFile {
+  fileName: string;
+  fileType: string;
+  dataUrl: string;
+}
+
 export interface Submission {
   id: string;
   trackingCode: string;
@@ -20,6 +26,8 @@ export interface Submission {
   submittedAt: string;
   reviewerId?: string;
   email?: string;
+  manuscript?: ManuscriptFile;
+  suggestedReviewerIds?: string[];
 }
 
 export interface Reviewer {
@@ -69,4 +77,11 @@ export interface SubmissionFormData {
   abstract: string;
   keywords: string;
   email: string;
+}
+
+export interface StoreData {
+  submissions: Submission[];
+  reviewers: Reviewer[];
+  scheduleIssues: ScheduleIssue[];
+  publications: Publication[];
 }

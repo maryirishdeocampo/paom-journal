@@ -1,14 +1,19 @@
 "use client";
 
+import { Pencil } from "lucide-react";
 import { useMemo, useState } from "react";
 import { AdminShell } from "@/components/admin/AdminShell";
+import { ReviewerEditor } from "@/components/admin/ReviewerEditor";
 import { ReviewerCard } from "@/components/reviewers/ReviewerCard";
 import { SearchFilter, SelectFilter } from "@/components/ui/SearchFilter";
-import { reviewers } from "@/lib/mock-data";
+import { useStore } from "@/hooks/useStore";
+import type { Reviewer } from "@/lib/types";
 
 export default function AdminReviewersPage() {
+  const { reviewers, refresh } = useStore();
   const [search, setSearch] = useState("");
   const [availability, setAvailability] = useState("all");
+  const [selected, setSelected] = useState<Reviewer | null>(null);
 
   const filtered = useMemo(() => {
     return reviewers.filter((r) => {
@@ -20,7 +25,7 @@ export default function AdminReviewersPage() {
         availability === "all" || r.availability === availability;
       return matchesSearch && matchesAvailability;
     });
-  }, [search, availability]);
+  }, [reviewers, search, availability]);
 
   return (
     <AdminShell title="Reviewers">
@@ -43,10 +48,23 @@ export default function AdminReviewersPage() {
           />
         }
       />
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {filtered.map((reviewer) => (
-          <ReviewerCard key={reviewer.id} reviewer={reviewer} showWorkload />
-        ))}
+      <div className="grid gap-6 lg:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 lg:col-span-2">
+          {filtered.map((reviewer) => (
+            <div key={reviewer.id} className="relative">
+              <ReviewerCard reviewer={reviewer} showWorkload />
+              <button
+                type="button"
+                onClick={() => setSelected(reviewer)}
+                className="absolute right-3 top-3 rounded-lg bg-card p-2 shadow-sm hover:bg-background"
+                aria-label="Edit reviewer"
+              >
+                <Pencil className="h-4 w-4 text-paom-blue" />
+              </button>
+            </div>
+          ))}
+        </div>
+        <ReviewerEditor reviewer={selected} onSaved={refresh} />
       </div>
     </AdminShell>
   );
