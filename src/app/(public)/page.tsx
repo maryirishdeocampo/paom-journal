@@ -5,7 +5,7 @@ import { ArrowRight, BookOpen, FileText } from "lucide-react";
 import { PageTransition } from "@/components/public/PageTransition";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { Logo } from "@/components/ui/Logo";
+import { HeroLogo } from "@/components/ui/HeroLogo";
 import { withBasePath } from "@/lib/base-path";
 
 /** Add your photo as: public/hero-background.jpg */
@@ -33,46 +33,54 @@ const features = [
 export default function LandingPage() {
   return (
     <PageTransition>
-      <section className="relative min-h-[85vh] overflow-hidden">
+      <section className="relative min-h-[88vh] overflow-hidden">
         {/* Background photo */}
         <div
           className="absolute inset-0 bg-cover bg-center bg-no-repeat"
           style={{ backgroundImage: `url(${HERO_BACKGROUND})` }}
         />
-        {/* Fallback gradient when no image is uploaded yet */}
-        <div className="absolute inset-0 bg-gradient-to-br from-paom-blue/10 via-background/40 to-paom-red/10" />
-        {/* Readability overlay */}
-        <div className="absolute inset-0 bg-background/75 backdrop-blur-[2px] dark:bg-background/85" />
+        {/* Dark overlay for text contrast (light + dark mode) */}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/45 to-black/60" />
 
-        <div className="relative mx-auto flex min-h-[85vh] max-w-7xl items-center px-4 py-16 sm:px-6 sm:py-24">
+        <div className="relative mx-auto flex min-h-[88vh] max-w-7xl items-center px-4 py-16 sm:px-6 sm:py-24">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
-            className="mx-auto w-full max-w-3xl text-center"
+            className="mx-auto w-full max-w-4xl"
           >
-            <div className="mb-12 flex justify-center">
-              <Logo showText={false} size="display" linked={false} />
-            </div>
-            <h1 className="text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
-              PAoM Journal Publication{" "}
-              <span className="bg-gradient-to-r from-paom-red to-paom-blue bg-clip-text text-transparent">
-                Management System
-              </span>
-            </h1>
-            <p className="mt-6 text-lg text-muted sm:text-xl">
-              Advancing academic excellence and research publication in management
-              science. Submit your manuscript or explore published scholarship from
-              the Philippine academic community.
-            </p>
-            <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
-              <Button href="/submit" size="lg">
-                Submit Journal
-                <ArrowRight className="h-4 w-4" />
-              </Button>
-              <Button href="/archive" variant="outline" size="lg">
-                View Publications
-              </Button>
+            {/* Frosted panel — readable on any background photo */}
+            <div className="rounded-3xl border border-white/20 bg-white/95 px-6 py-10 shadow-2xl backdrop-blur-md sm:px-10 sm:py-12 dark:border-white/10 dark:bg-card/95">
+              <div className="text-center">
+                <div className="mb-10 flex justify-center">
+                  <HeroLogo />
+                </div>
+                <h1 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl lg:text-5xl dark:text-foreground">
+                  PAoM Journal Publication{" "}
+                  <span className="bg-gradient-to-r from-paom-red to-paom-blue bg-clip-text text-transparent">
+                    Management System
+                  </span>
+                </h1>
+                <p className="mx-auto mt-6 max-w-2xl text-base leading-relaxed text-gray-700 sm:text-lg dark:text-muted">
+                  Advancing academic excellence and research publication in management
+                  science. Submit your manuscript or explore published scholarship from
+                  the Philippine academic community.
+                </p>
+                <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
+                  <Button href="/submit" size="lg">
+                    Submit Journal
+                    <ArrowRight className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    href="/archive"
+                    variant="outline"
+                    size="lg"
+                    className="border-gray-300 bg-white text-gray-900 hover:bg-gray-50 dark:border-border dark:bg-transparent dark:text-foreground"
+                  >
+                    View Publications
+                  </Button>
+                </div>
+              </div>
             </div>
           </motion.div>
         </div>
