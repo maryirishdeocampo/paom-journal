@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import { withBasePath } from "@/lib/base-path";
+import { BRAND } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
 interface LogoProps {
@@ -47,7 +48,7 @@ function LogoMark({ size = "md" }: { size?: "sm" | "md" | "lg" }) {
     >
       <Image
         src={LOGO_PATH}
-        alt="PAoM Logo"
+        alt={`${BRAND.name} Logo`}
         width={px}
         height={px}
         className="object-contain"
@@ -68,9 +69,10 @@ export function Logo({
     <Link href={href} className={cn("flex items-center gap-3", className)}>
       <LogoMark size={size} />
       {showText && (
-        <div className="hidden sm:block">
-          <p className="text-sm font-bold leading-tight text-foreground">PAoM</p>
-          <p className="text-[10px] leading-tight text-muted">Journal System</p>
+        <div className="hidden max-w-[11rem] sm:block lg:max-w-none">
+          <p className="text-xs font-bold leading-snug text-foreground lg:text-sm">
+            {BRAND.name}
+          </p>
         </div>
       )}
     </Link>
