@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { FileUp, Loader2, Sparkles } from "lucide-react";
+import { CheckCircle2, FileUp, Loader2, Sparkles } from "lucide-react";
 import { useCallback, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -17,6 +17,8 @@ import type { ReviewerSuggestion } from "@/lib/reviewer-matching";
 import type { ManuscriptFile } from "@/lib/types";
 import { generateTrackingCode } from "@/lib/utils";
 
+const MAX_FILE_BYTES = 3 * 1024 * 1024;
+
 const schema = z.object({
   title: z.string().min(10, "Title must be at least 10 characters"),
   authors: z.string().min(1, "At least one author is required"),
@@ -31,11 +33,57 @@ const schema = z.object({
 
 type FormData = z.infer<typeof schema>;
 
+function FileUploadSlot({
+  id,
+  label,
+  accept,
+  hint,
+  fileName,
+  onFile,
+  error,
+}: {
+  id: string;
+  label: string;
+  accept: string;
+  hint: string;
+  fileName: string;
+  onFile: (file: File | null) => void;
+  error?: string;
+}) {
+  return (
+    <div>
+      <p className="mb-2 text-sm font-medium">{label}</p>
+      <label
+        htmlFor={id}
+        className="flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-border bg-background/50 p-6 transition-colors hover:border-paom-blue/50 hover:bg-paom-blue/5"
+      >
+        {fileName ? (
+          <CheckCircle2 className="mb-2 h-8 w-8 text-green-600" />
+        ) : (
+          <FileUp className="mb-2 h-8 w-8 text-muted" />
+        )}
+        <p className="text-center text-sm font-medium">
+          {fileName || `Click to upload ${hint}`}
+        </p>
+        <p className="mt-1 text-xs text-muted">Required · max 3MB</p>
+        <input
+          id={id}
+          type="file"
+          className="hidden"
+          accept={accept}
+          onChange={(e) => onFile(e.target.files?.[0] ?? null)}
+        />
+      </label>
+      {error && <p className="mt-1 text-xs text-paom-red">{error}</p>}
+    </div>
+  );
+}
+
 export function SubmissionForm() {
   const [showSuccess, setShowSuccess] = useState(false);
   const [trackingCode, setTrackingCode] = useState("");
-  const [fileName, setFileName] = useState("");
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [pdfFile, setPdfFile] = useState<File | null>(null);
+  const [docxFile, setDocxFile] = useState<File | null>(null);
   const [fileError, setFileError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [suggestedKeywords, setSuggestedKeywords] = useState<string[]>([]);
@@ -82,11 +130,39 @@ export function SubmissionForm() {
       reader.readAsDataURL(file);
     });
 
+  const validateFile = (file: File, type: "pdf" | "docx"): string | null => {
+    if (file.size > MAX_FILE_BYTES) {
+      return `${type.toUpperCase()} must be under 3MB.`;
+    }
+    const name = file.name.toLowerCase();
+    if (type === "pdf" && !name.endsWith(".pdf")) {
+      return "Please upload a PDF file.";
+    }
+    if (type === "docx" && !name.endsWith(".docx") && !name.endsWith(".doc")) {
+      return "Please upload a DOCX file.";
+    }
+    return null;
+  };
+
   const onSubmit = async (data: FormData) => {
     setIsSubmitting(true);
     setFileError("");
-    const code = generateTrackingCode();
 
+    if (!pdfFile || !docxFile) {
+      setFileError("PAoM requires both a PDF and a DOCX manuscript file.");
+      setIsSubmitting(false);
+      return;
+    }
+
+    const pdfErr = validateFile(pdfFile, "pdf");
+    const docxErr = validateFile(docxFile, "docx");
+    if (pdfErr || docxErr) {
+      setFileError(pdfErr ?? docxErr ?? "");
+      setIsSubmitting(false);
+      return;
+    }
+
+    const code = generateTrackingCode();
     const automation = runSubmissionAutomation({
       title: data.title,
       abstract: data.abstract,
@@ -96,44 +172,38 @@ export function SubmissionForm() {
     setFinalKeywords(automation.keywords);
     setReviewerSuggestions(automation.suggestedReviewers);
 
-    let manuscript: ManuscriptFile | undefined;
-    if (selectedFile) {
-      if (selectedFile.size > 4 * 1024 * 1024) {
-        setFileError("File must be under 4MB for browser storage. Try a smaller PDF.");
-        setIsSubmitting(false);
-        return;
-      }
-      try {
-        manuscript = await readFileAsDataUrl(selectedFile);
-      } catch {
-        setFileError("Could not read file. Please try again.");
-        setIsSubmitting(false);
-        return;
-      }
+    try {
+      const [pdf, docx] = await Promise.all([
+        readFileAsDataUrl(pdfFile),
+        readFileAsDataUrl(docxFile),
+      ]);
+
+      addSubmission({
+        id: code,
+        trackingCode: code,
+        title: data.title,
+        authors: data.authors.split(",").map((a) => a.trim()),
+        affiliation: data.affiliation,
+        abstract: data.abstract,
+        keywords: automation.keywords,
+        status: "submitted",
+        submittedAt: new Date().toISOString(),
+        email: data.email,
+        manuscripts: { pdf, docx },
+        suggestedReviewerIds: automation.suggestedReviewers.map((s) => s.reviewer.id),
+      });
+
+      setTrackingCode(code);
+      setShowSuccess(true);
+      reset();
+      setPdfFile(null);
+      setDocxFile(null);
+      setSuggestedKeywords([]);
+    } catch {
+      setFileError("Could not read files. Please try again.");
     }
 
-    addSubmission({
-      id: code,
-      trackingCode: code,
-      title: data.title,
-      authors: data.authors.split(",").map((a) => a.trim()),
-      affiliation: data.affiliation,
-      abstract: data.abstract,
-      keywords: automation.keywords,
-      status: "submitted",
-      submittedAt: new Date().toISOString(),
-      email: data.email,
-      manuscript,
-      suggestedReviewerIds: automation.suggestedReviewers.map((s) => s.reviewer.id),
-    });
-
-    setTrackingCode(code);
-    setShowSuccess(true);
     setIsSubmitting(false);
-    reset();
-    setFileName("");
-    setSelectedFile(null);
-    setSuggestedKeywords([]);
   };
 
   const copyCode = () => {
@@ -191,9 +261,7 @@ export function SubmissionForm() {
               placeholder="Provide a comprehensive abstract (100–3000 characters)"
               rows={6}
               error={errors.abstract?.message}
-              {...register("abstract", {
-                onBlur: runKeywordSuggestion,
-              })}
+              {...register("abstract", { onBlur: runKeywordSuggestion })}
             />
             {(abstractValue?.length ?? 0) >= 50 && (
               <div className="rounded-xl border border-paom-blue/20 bg-paom-blue/5 p-4">
@@ -251,29 +319,47 @@ export function SubmissionForm() {
           <CardHeader>
             <CardTitle>Manuscript Upload</CardTitle>
           </CardHeader>
-          <label className="flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-border bg-background/50 p-8 transition-colors hover:border-paom-blue/50 hover:bg-paom-blue/5">
-            <FileUp className="mb-3 h-10 w-10 text-muted" />
-            <p className="text-sm font-medium">
-              {fileName || "Click to upload manuscript (PDF, DOCX)"}
-            </p>
-            <p className="mt-1 text-xs text-muted">PDF or DOCX, max 4MB</p>
-            <input
-              type="file"
-              className="hidden"
-              accept=".pdf,.doc,.docx"
-              onChange={(e) => {
-                const file = e.target.files?.[0] ?? null;
-                setSelectedFile(file);
-                setFileName(file?.name ?? "");
+          <p className="mb-4 text-sm text-muted">
+            PAoM requires <strong>two submissions</strong>: one PDF and one DOCX file of
+            your manuscript.
+          </p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <FileUploadSlot
+              id="pdf-upload"
+              label="PDF Manuscript *"
+              accept=".pdf,application/pdf"
+              hint="PDF"
+              fileName={pdfFile?.name ?? ""}
+              onFile={(file) => {
+                setPdfFile(file);
                 setFileError("");
               }}
             />
-          </label>
-          {fileError && <p className="mt-2 text-xs text-paom-red">{fileError}</p>}
+            <FileUploadSlot
+              id="docx-upload"
+              label="DOCX Manuscript *"
+              accept=".doc,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+              hint="DOCX"
+              fileName={docxFile?.name ?? ""}
+              onFile={(file) => {
+                setDocxFile(file);
+                setFileError("");
+              }}
+            />
+          </div>
+          {fileError && (
+            <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-paom-red dark:bg-red-900/20">
+              {fileError}
+            </p>
+          )}
         </Card>
 
         <div className="flex justify-end">
-          <Button type="submit" size="lg" disabled={isSubmitting}>
+          <Button
+            type="submit"
+            size="lg"
+            disabled={isSubmitting || !pdfFile || !docxFile}
+          >
             {isSubmitting ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -298,8 +384,7 @@ export function SubmissionForm() {
               <span className="text-2xl">✓</span>
             </div>
             <p className="mt-3 text-sm text-muted">
-              Your manuscript was submitted. Reviewer suggestions were generated
-              automatically from your abstract.
+              Your PDF and DOCX manuscripts were submitted successfully.
             </p>
             <div className="mt-4 rounded-xl bg-background p-4">
               <p className="text-xs text-muted">Tracking Code</p>

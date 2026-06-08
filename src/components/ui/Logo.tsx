@@ -11,7 +11,7 @@ interface LogoProps {
   className?: string;
   showText?: boolean;
   href?: string;
-  size?: "sm" | "md" | "lg";
+  size?: "sm" | "md" | "lg" | "xl" | "hero";
 }
 
 /**
@@ -24,9 +24,11 @@ const sizes = {
   sm: 32,
   md: 40,
   lg: 80,
+  xl: 112,
+  hero: 144,
 };
 
-function LogoMark({ size = "md" }: { size?: "sm" | "md" | "lg" }) {
+function LogoMark({ size = "md" }: { size?: keyof typeof sizes }) {
   const [imageFailed, setImageFailed] = useState(false);
   const px = sizes[size];
 

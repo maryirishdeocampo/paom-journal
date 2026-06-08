@@ -42,8 +42,8 @@ export default function LandingPage() {
             transition={{ duration: 0.6 }}
             className="mx-auto max-w-3xl text-center"
           >
-            <div className="mb-8 flex justify-center">
-              <Logo showText={false} size="lg" />
+            <div className="mb-10 flex justify-center">
+              <Logo showText={false} size="hero" />
             </div>
             <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-1.5 text-sm text-muted shadow-sm">
               <span className="h-2 w-2 rounded-full bg-paom-red" />

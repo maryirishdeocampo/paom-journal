@@ -4,6 +4,16 @@ export const BRAND = {
   tagline: "Advancing Management Scholarship in the Philippines",
 } as const;
 
+export const CONTACT = {
+  title: "CONTACT US",
+  organization: "De La Salle University",
+  department: "Center for Business Research and Development",
+  addressLine1: "Second Floor, Faculty Center",
+  addressLine2: "2401 Taft Avenue, Manila, Philippines",
+  telephone: "632-465-8939; 632-5244611 local 437 or 149",
+  email: "contact@paomassociation.org",
+} as const;
+
 export const PUBLIC_NAV = [
   { href: "/", label: "Home" },
   { href: "/submit", label: "Submit" },

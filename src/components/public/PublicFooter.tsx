@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BRAND, PUBLIC_NAV } from "@/lib/constants";
+import { BRAND, CONTACT, PUBLIC_NAV } from "@/lib/constants";
 import { Logo } from "@/components/ui/Logo";
 
 export function PublicFooter() {
@@ -30,14 +30,26 @@ export function PublicFooter() {
             </ul>
           </div>
           <div>
-            <h4 className="mb-3 text-sm font-semibold">Contact</h4>
-            <p className="text-sm text-muted">
-              Philippine Academy of Management
+            <h4 className="mb-3 text-sm font-semibold tracking-wide">{CONTACT.title}</h4>
+            <address className="not-italic text-sm leading-relaxed text-muted">
+              {CONTACT.organization}
               <br />
-              journal@paom.org.ph
+              {CONTACT.department}
               <br />
-              Metro Manila, Philippines
-            </p>
+              {CONTACT.addressLine1}
+              <br />
+              {CONTACT.addressLine2}
+              <br />
+              <span className="mt-2 block">
+                Telephone: {CONTACT.telephone}
+              </span>
+              <a
+                href={`mailto:${CONTACT.email}`}
+                className="mt-1 block text-paom-blue transition-colors hover:underline"
+              >
+                Email: {CONTACT.email}
+              </a>
+            </address>
           </div>
         </div>
         <div className="mt-8 border-t border-border pt-8 text-center text-xs text-muted">

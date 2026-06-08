@@ -14,6 +14,11 @@ export interface ManuscriptFile {
   dataUrl: string;
 }
 
+export interface SubmissionManuscripts {
+  pdf?: ManuscriptFile;
+  docx?: ManuscriptFile;
+}
+
 export interface Submission {
   id: string;
   trackingCode: string;
@@ -26,7 +31,9 @@ export interface Submission {
   submittedAt: string;
   reviewerId?: string;
   email?: string;
+  /** @deprecated use manuscripts */
   manuscript?: ManuscriptFile;
+  manuscripts?: SubmissionManuscripts;
   suggestedReviewerIds?: string[];
 }
 

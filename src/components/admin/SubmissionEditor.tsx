@@ -125,7 +125,9 @@ export function SubmissionEditor({
         <div className="flex flex-col gap-2">
           <Button variant="outline" onClick={onViewManuscript}>
             <Eye className="h-4 w-4" />
-            {submission.manuscript ? "View Manuscript" : "No File Uploaded"}
+            {submission.manuscripts?.pdf || submission.manuscripts?.docx || submission.manuscript
+              ? "View Manuscripts (PDF / DOCX)"
+              : "No Files Uploaded"}
           </Button>
           <Button onClick={save}>
             <Save className="h-4 w-4" />

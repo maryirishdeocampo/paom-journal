@@ -34,7 +34,7 @@ export default function AdminSettingsPage() {
             <Input
               id="contact-email"
               label="Contact Email"
-              defaultValue="journal@paom.org.ph"
+              defaultValue="contact@paomassociation.org"
             />
             <Input id="issn" label="ISSN" defaultValue="0000-0000" />
           </div>

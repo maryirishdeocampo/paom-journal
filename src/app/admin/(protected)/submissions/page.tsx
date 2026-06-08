@@ -86,10 +86,18 @@ export default function AdminSubmissionsPage() {
     },
     {
       key: "file",
-      header: "File",
-      render: (s) => (
-        <span className="text-xs">{s.manuscript ? "📄 Yes" : "—"}</span>
-      ),
+      header: "Files",
+      render: (s) => {
+        const hasPdf = s.manuscripts?.pdf || s.manuscript?.fileName?.endsWith(".pdf");
+        const hasDocx =
+          s.manuscripts?.docx ||
+          s.manuscript?.fileName?.endsWith(".docx") ||
+          s.manuscript?.fileName?.endsWith(".doc");
+        if (hasPdf && hasDocx) return <span className="text-xs">PDF + DOCX</span>;
+        if (hasPdf) return <span className="text-xs">PDF only</span>;
+        if (hasDocx) return <span className="text-xs">DOCX only</span>;
+        return <span className="text-xs">—</span>;
+      },
     },
     {
       key: "submittedAt",
@@ -134,6 +142,7 @@ export default function AdminSubmissionsPage() {
       <ManuscriptViewer
         open={viewerOpen}
         onClose={() => setViewerOpen(false)}
+        manuscripts={selected?.manuscripts}
         manuscript={selected?.manuscript}
         title={selected?.title}
       />
