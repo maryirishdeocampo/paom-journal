@@ -49,19 +49,19 @@ export default function LandingPage() {
             transition={{ duration: 0.6 }}
             className="mx-auto w-full max-w-4xl"
           >
-            {/* Frosted panel — readable on any background photo */}
-            <div className="rounded-3xl border border-white/20 bg-white/95 px-6 py-10 shadow-2xl backdrop-blur-md sm:px-10 sm:py-12 dark:border-white/10 dark:bg-card/95">
+            {/* Solid panel — high contrast in light and dark mode */}
+            <div className="rounded-3xl border border-gray-200 bg-white px-6 py-10 shadow-2xl sm:px-10 sm:py-12 dark:border-gray-700 dark:bg-[#1a1d27]">
               <div className="text-center">
                 <div className="mb-10 flex justify-center">
                   <HeroLogo />
                 </div>
-                <h1 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl lg:text-5xl dark:text-foreground">
+                <h1 className="text-3xl font-bold tracking-tight text-[#1a1a1a] sm:text-4xl lg:text-5xl dark:text-white">
                   PAoM Journal Publication{" "}
-                  <span className="bg-gradient-to-r from-paom-red to-paom-blue bg-clip-text text-transparent">
+                  <span className="text-paom-blue dark:text-[#6b70e8]">
                     Management System
                   </span>
                 </h1>
-                <p className="mx-auto mt-6 max-w-2xl text-base leading-relaxed text-gray-700 sm:text-lg dark:text-muted">
+                <p className="mx-auto mt-6 max-w-2xl text-base leading-relaxed text-[#333333] sm:text-lg dark:text-[#e5e5e5]">
                   Advancing academic excellence and research publication in management
                   science. Submit your manuscript or explore published scholarship from
                   the Philippine academic community.
@@ -71,12 +71,7 @@ export default function LandingPage() {
                     Submit Journal
                     <ArrowRight className="h-4 w-4" />
                   </Button>
-                  <Button
-                    href="/archive"
-                    variant="outline"
-                    size="lg"
-                    className="border-gray-300 bg-white text-gray-900 hover:bg-gray-50 dark:border-border dark:bg-transparent dark:text-foreground"
-                  >
+                  <Button href="/archive" variant="secondary" size="lg">
                     View Publications
                   </Button>
                 </div>
