@@ -120,6 +120,32 @@ The app is structured for easy backend wiring:
 
 Copy `.env.example` to `.env.local` and add your credentials.
 
+## Change the Logo
+
+1. Save your PAoM logo image as:
+   ```
+   public/paom-logo.png
+   ```
+2. Recommended: **PNG**, 512×512 px, transparent background
+3. Commit and push — it appears in the navbar, footer, and login page automatically
+4. If the file is missing, the gradient **P** placeholder is shown instead
+
+## Submission Automation
+
+After a journal is submitted, the system automatically:
+
+1. **Extracts keywords** from the abstract (and title)
+2. **Merges** them with any keywords the author entered
+3. **Suggests reviewers** by matching keywords to reviewer expertise tags
+4. Shows results in the success modal (public) and admin submissions panel
+
+Logic lives in:
+- `src/lib/keywords.ts` — keyword extraction
+- `src/lib/reviewer-matching.ts` — reviewer scoring
+- `src/lib/submission-automation.ts` — full pipeline
+
+On GitHub Pages, submissions are stored in the browser (`localStorage`) for demo. For real automation across devices, connect **Supabase** and run the same functions after insert.
+
 ## Brand Colors
 
 | Color | Hex |
