@@ -1,6 +1,7 @@
 import { Award, BookOpen, Globe, Target } from "lucide-react";
 import { PageTransition } from "@/components/public/PageTransition";
 import { Card } from "@/components/ui/Card";
+import { Logo } from "@/components/ui/Logo";
 import { BRAND } from "@/lib/constants";
 
 const highlights = [
@@ -39,8 +40,8 @@ export default function AboutPage() {
     <PageTransition>
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6">
         <div className="mb-12 text-center">
-          <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-paom-red via-paom-blue to-paom-gold text-2xl font-bold text-white shadow-lg">
-            P
+          <div className="mx-auto mb-6 flex justify-center">
+            <Logo showText={false} size="lg" href="/about" />
           </div>
           <h1 className="text-3xl font-bold sm:text-4xl">{BRAND.name}</h1>
           <p className="mx-auto mt-4 max-w-2xl text-lg text-muted">
