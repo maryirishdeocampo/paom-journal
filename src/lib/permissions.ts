@@ -7,6 +7,6 @@ export const can = {
   editSubmissionStatus: (role: Role) => role === "admin",
   manageReviewers: (role: Role) => role === "admin",
   editSchedule: (role: Role) => role === "admin",
-  submitManuscript: (_role: Role) => true,
+  submitManuscript: () => true,
   viewAdminDashboard: (role: Role) => role === "admin",
 };

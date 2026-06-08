@@ -7,6 +7,7 @@ const badgeVariants = cva(
     variants: {
       variant: {
         default: "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200",
+        draft: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
         submitted: "bg-blue-100 text-paom-blue dark:bg-blue-900/30 dark:text-blue-300",
         under_review: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300",
         revision: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300",
@@ -16,6 +17,7 @@ const badgeVariants = cva(
         limited: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300",
         unavailable: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
         open: "bg-blue-100 text-paom-blue dark:bg-blue-900/30 dark:text-blue-300",
+        review: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300",
         production: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300",
         planning: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
         in_press: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300",

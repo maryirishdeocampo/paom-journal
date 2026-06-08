@@ -24,7 +24,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - name: Set base path
@@ -37,7 +37,7 @@ jobs:
           fi
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Build static site
         run: npm run build

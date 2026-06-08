@@ -1,3 +1,5 @@
+"use client";
+
 import { AdminShell } from "@/components/admin/AdminShell";
 import { StatusChart, SubmissionsChart } from "@/components/admin/Charts";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
