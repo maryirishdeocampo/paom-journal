@@ -11,7 +11,9 @@ interface LogoProps {
   className?: string;
   showText?: boolean;
   href?: string;
-  size?: "sm" | "md" | "lg" | "xl" | "hero";
+  size?: "sm" | "md" | "lg" | "xl" | "hero" | "display";
+  /** When false, renders without a link wrapper (for hero displays) */
+  linked?: boolean;
 }
 
 /**
@@ -26,6 +28,7 @@ const sizes = {
   lg: 80,
   xl: 112,
   hero: 144,
+  display: 280,
 };
 
 function LogoMark({ size = "md" }: { size?: keyof typeof sizes }) {
@@ -45,7 +48,10 @@ function LogoMark({ size = "md" }: { size?: keyof typeof sizes }) {
 
   return (
     <div
-      className="relative overflow-hidden rounded-xl shadow-sm"
+      className={cn(
+        "relative overflow-hidden shadow-md",
+        size === "display" || size === "hero" ? "rounded-2xl" : "rounded-xl"
+      )}
       style={{ width: px, height: px }}
     >
       <Image
@@ -66,9 +72,10 @@ export function Logo({
   showText = true,
   href = "/",
   size = "md",
+  linked = true,
 }: LogoProps) {
-  return (
-    <Link href={href} className={cn("flex items-center gap-3", className)}>
+  const content = (
+    <>
       <LogoMark size={size} />
       {showText && (
         <div className="hidden max-w-[11rem] sm:block lg:max-w-none">
@@ -77,6 +84,16 @@ export function Logo({
           </p>
         </div>
       )}
+    </>
+  );
+
+  if (!linked) {
+    return <div className={cn("flex items-center justify-center", className)}>{content}</div>;
+  }
+
+  return (
+    <Link href={href} className={cn("flex items-center gap-3", className)}>
+      {content}
     </Link>
   );
 }

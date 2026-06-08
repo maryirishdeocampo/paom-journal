@@ -6,7 +6,10 @@ import { PageTransition } from "@/components/public/PageTransition";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Logo } from "@/components/ui/Logo";
-import { BRAND } from "@/lib/constants";
+import { withBasePath } from "@/lib/base-path";
+
+/** Add your photo as: public/hero-background.jpg */
+const HERO_BACKGROUND = withBasePath("/hero-background.jpg");
 
 const features = [
   {
@@ -30,24 +33,26 @@ const features = [
 export default function LandingPage() {
   return (
     <PageTransition>
-      <section className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-paom-blue/5 via-transparent to-paom-red/5" />
-        <div className="absolute -right-32 -top-32 h-96 w-96 rounded-full bg-paom-gold/10 blur-3xl" />
-        <div className="absolute -bottom-32 -left-32 h-96 w-96 rounded-full bg-paom-blue/10 blur-3xl" />
+      <section className="relative min-h-[85vh] overflow-hidden">
+        {/* Background photo */}
+        <div
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+          style={{ backgroundImage: `url(${HERO_BACKGROUND})` }}
+        />
+        {/* Fallback gradient when no image is uploaded yet */}
+        <div className="absolute inset-0 bg-gradient-to-br from-paom-blue/10 via-background/40 to-paom-red/10" />
+        {/* Readability overlay */}
+        <div className="absolute inset-0 bg-background/75 backdrop-blur-[2px] dark:bg-background/85" />
 
-        <div className="relative mx-auto max-w-7xl px-4 py-20 sm:px-6 sm:py-28">
+        <div className="relative mx-auto flex min-h-[85vh] max-w-7xl items-center px-4 py-16 sm:px-6 sm:py-24">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
-            className="mx-auto max-w-3xl text-center"
+            className="mx-auto w-full max-w-3xl text-center"
           >
-            <div className="mb-10 flex justify-center">
-              <Logo showText={false} size="hero" />
-            </div>
-            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-1.5 text-sm text-muted shadow-sm">
-              <span className="h-2 w-2 rounded-full bg-paom-red" />
-              {BRAND.name}
+            <div className="mb-12 flex justify-center">
+              <Logo showText={false} size="display" linked={false} />
             </div>
             <h1 className="text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
               PAoM Journal Publication{" "}
