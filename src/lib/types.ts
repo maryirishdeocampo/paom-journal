@@ -9,6 +9,16 @@ export type ManuscriptStatus =
   | "published"
   | "archived";
 
+export type ReviewAssignmentStatus = "pending" | "in_review" | "completed";
+
+export type ReviewDecision =
+  | "major_revisions"
+  | "minor_revisions"
+  | "without_revisions"
+  | "not_accepted"
+  | "encourage_resubmit"
+  | "reject";
+
 /** @deprecated Use ManuscriptStatus */
 export type SubmissionStatus = ManuscriptStatus;
 
@@ -23,6 +33,14 @@ export interface ManuscriptFile {
 export interface SubmissionManuscripts {
   pdf?: ManuscriptFile;
   docx?: ManuscriptFile;
+}
+
+export interface ReviewAssignment {
+  reviewerId: string;
+  status: ReviewAssignmentStatus;
+  decision?: ReviewDecision;
+  remarks?: string;
+  updatedAt?: string;
 }
 
 /** Single manuscript record — moves through workflow without duplication */
@@ -40,6 +58,8 @@ export interface Manuscript {
   submittedAt: string;
   updatedAt: string;
   assignedReviewerIds: string[];
+  reviewAssignments: ReviewAssignment[];
+  editorialDecision?: ReviewDecision;
   issueId?: string;
   doi?: string;
   email?: string;

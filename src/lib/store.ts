@@ -9,6 +9,8 @@ import type {
   JournalIssue,
   Manuscript,
   ManuscriptStatus,
+  ReviewAssignment,
+  ReviewDecision,
   Reviewer,
   StoreData,
 } from "./types";
@@ -164,8 +166,12 @@ function syncReviewerCounts(data: StoreData) {
   const counts = new Map<string, number>();
   for (const m of data.manuscripts) {
     if (ACTIVE_REVIEW_STATUSES.includes(m.status)) {
-      for (const rid of m.assignedReviewerIds) {
-        counts.set(rid, (counts.get(rid) ?? 0) + 1);
+      for (const assignment of m.reviewAssignments) {
+        if (assignment.status === "completed") continue;
+        counts.set(
+          assignment.reviewerId,
+          (counts.get(assignment.reviewerId) ?? 0) + 1
+        );
       }
     }
   }
@@ -243,7 +249,28 @@ export function updateManuscriptStatus(id: string, status: ManuscriptStatus) {
 export const updateSubmissionStatus = updateManuscriptStatus;
 
 export function assignReviewers(manuscriptId: string, reviewerIds: string[]) {
-  updateManuscript(manuscriptId, { assignedReviewerIds: reviewerIds });
+  const current = getManuscriptById(manuscriptId);
+  const nextAssignments: ReviewAssignment[] = reviewerIds
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((reviewerId) => {
+      const existing = current?.reviewAssignments.find(
+        (assignment) => assignment.reviewerId === reviewerId
+      );
+
+      return (
+        existing ?? {
+          reviewerId,
+          status: "pending",
+          updatedAt: new Date().toISOString(),
+        }
+      );
+    });
+
+  updateManuscript(manuscriptId, {
+    assignedReviewerIds: nextAssignments.map((assignment) => assignment.reviewerId),
+    reviewAssignments: nextAssignments,
+  });
 }
 
 /** @deprecated */
@@ -253,6 +280,27 @@ export function assignReviewer(manuscriptId: string, reviewerId: string | undefi
 
 export function assignManuscriptToIssue(manuscriptId: string, issueId: string | undefined) {
   updateManuscript(manuscriptId, { issueId: issueId || undefined });
+}
+
+export function updateReviewAssignments(
+  manuscriptId: string,
+  reviewAssignments: ReviewAssignment[]
+) {
+  const sanitizedAssignments = reviewAssignments
+    .filter((assignment) => assignment.reviewerId)
+    .slice(0, 2);
+
+  updateManuscript(manuscriptId, {
+    reviewAssignments: sanitizedAssignments,
+    assignedReviewerIds: sanitizedAssignments.map((assignment) => assignment.reviewerId),
+  });
+}
+
+export function updateEditorialDecision(
+  manuscriptId: string,
+  editorialDecision: ReviewDecision | undefined
+) {
+  updateManuscript(manuscriptId, { editorialDecision });
 }
 
 // ─── Reviewers ─────────────────────────────────────────────────
@@ -280,12 +328,17 @@ export function addReviewer(reviewer: Reviewer) {
 export function getReviewerAssignments(): Array<{
   manuscript: Manuscript;
   reviewer: Reviewer;
+  assignment: ReviewAssignment;
 }> {
-  const result: Array<{ manuscript: Manuscript; reviewer: Reviewer }> = [];
+  const result: Array<{
+    manuscript: Manuscript;
+    reviewer: Reviewer;
+    assignment: ReviewAssignment;
+  }> = [];
   for (const m of getManuscripts()) {
-    for (const rid of m.assignedReviewerIds) {
-      const reviewer = getReviewerById(rid);
-      if (reviewer) result.push({ manuscript: m, reviewer });
+    for (const assignment of m.reviewAssignments) {
+      const reviewer = getReviewerById(assignment.reviewerId);
+      if (reviewer) result.push({ manuscript: m, reviewer, assignment });
     }
   }
   return result;

@@ -1,4 +1,11 @@
-import type { DashboardStats, JournalIssue, Manuscript, Reviewer } from "./types";
+import type {
+  DashboardStats,
+  JournalIssue,
+  Manuscript,
+  ReviewAssignment,
+  ReviewDecision,
+  Reviewer,
+} from "./types";
 import { inferResearchArea } from "./manuscript-utils";
 
 export const publicStats: DashboardStats = {
@@ -8,22 +15,48 @@ export const publicStats: DashboardStats = {
   activeReviewers: 48,
 };
 
-function m(partial: Omit<Manuscript, "researchArea" | "updatedAt" | "assignedReviewerIds" | "manuscriptId"> & {
+function buildReviewAssignment(
+  reviewerId: string,
+  status: ReviewAssignment["status"],
+  decision?: ReviewDecision,
+  remarks?: string
+): ReviewAssignment {
+  return {
+    reviewerId,
+    status,
+    decision,
+    remarks,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+function m(
+  partial: Omit<
+    Manuscript,
+    "researchArea" | "updatedAt" | "assignedReviewerIds" | "manuscriptId" | "reviewAssignments"
+  > & {
   researchArea?: string;
   updatedAt?: string;
   assignedReviewerIds?: string[];
+  reviewAssignments?: ReviewAssignment[];
   manuscriptId?: string;
   reviewerId?: string;
-}): Manuscript {
+}
+): Manuscript {
   const keywords = partial.keywords;
+  const reviewAssignments =
+    partial.reviewAssignments ??
+    (partial.reviewerId
+      ? [buildReviewAssignment(partial.reviewerId, "in_review")]
+      : []);
   return {
     ...partial,
     manuscriptId: partial.manuscriptId ?? partial.trackingCode,
     researchArea: partial.researchArea ?? inferResearchArea(keywords),
     updatedAt: partial.updatedAt ?? partial.submittedAt,
+    reviewAssignments,
     assignedReviewerIds:
-      partial.assignedReviewerIds ??
-      (partial.reviewerId ? [partial.reviewerId] : []),
+      partial.assignedReviewerIds ?? reviewAssignments.map((assignment) => assignment.reviewerId),
   };
 }
 
@@ -41,7 +74,10 @@ export const seedManuscripts: Manuscript[] = [
     status: "under_review",
     submittedAt: "2026-01-15",
     updatedAt: "2026-02-10",
-    reviewerId: "r1",
+    reviewAssignments: [
+      buildReviewAssignment("r1", "in_review"),
+      buildReviewAssignment("r4", "pending"),
+    ],
     email: "maria.santos@up.edu.ph",
   }),
   m({
@@ -71,7 +107,21 @@ export const seedManuscripts: Manuscript[] = [
     status: "revision_required",
     submittedAt: "2025-11-20",
     updatedAt: "2026-01-05",
-    reviewerId: "r2",
+    reviewAssignments: [
+      buildReviewAssignment(
+        "r2",
+        "completed",
+        "major_revisions",
+        "Strengthen the methodology discussion and expand the ASEAN comparison."
+      ),
+      buildReviewAssignment(
+        "r6",
+        "completed",
+        "minor_revisions",
+        "Clarify the sampling criteria and tighten the conclusion."
+      ),
+    ],
+    editorialDecision: "major_revisions",
     email: "carlos.m@dlsu.edu.ph",
   }),
   m({
@@ -87,7 +137,21 @@ export const seedManuscripts: Manuscript[] = [
     status: "accepted",
     submittedAt: "2025-09-10",
     updatedAt: "2026-01-20",
-    reviewerId: "r3",
+    reviewAssignments: [
+      buildReviewAssignment(
+        "r3",
+        "completed",
+        "without_revisions",
+        "The paper is ready for acceptance with only copyediting."
+      ),
+      buildReviewAssignment(
+        "r1",
+        "completed",
+        "without_revisions",
+        "A strong contribution with clear empirical grounding."
+      ),
+    ],
+    editorialDecision: "without_revisions",
     email: "r.garcia@ust.edu.ph",
   }),
   m({
@@ -103,7 +167,11 @@ export const seedManuscripts: Manuscript[] = [
     status: "published",
     submittedAt: "2025-06-01",
     updatedAt: "2025-12-01",
-    reviewerId: "r1",
+    reviewAssignments: [
+      buildReviewAssignment("r1", "completed", "without_revisions"),
+      buildReviewAssignment("r5", "completed", "minor_revisions"),
+    ],
+    editorialDecision: "without_revisions",
     issueId: "s3",
     doi: "10.1234/paom.2025.001",
     email: "p.lim@aim.edu",
@@ -153,7 +221,11 @@ export const seedManuscripts: Manuscript[] = [
     submittedAt: "2025-10-01",
     updatedAt: "2026-02-15",
     issueId: "s2",
-    reviewerId: "r4",
+    reviewAssignments: [
+      buildReviewAssignment("r4", "completed", "minor_revisions"),
+      buildReviewAssignment("r3", "completed", "without_revisions"),
+    ],
+    editorialDecision: "minor_revisions",
     email: "r.santos@up.edu.ph",
   }),
 ];

@@ -194,6 +194,7 @@ export function SubmissionForm() {
         submittedAt: now,
         updatedAt: now,
         assignedReviewerIds: [],
+        reviewAssignments: [],
         email: data.email,
         manuscripts: { pdf, docx },
         suggestedReviewerIds: automation.suggestedReviewers.map((s) => s.reviewer.id),

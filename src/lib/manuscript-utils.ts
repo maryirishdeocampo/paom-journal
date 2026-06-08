@@ -1,4 +1,10 @@
-import type { Manuscript, ManuscriptStatus } from "./types";
+import type {
+  Manuscript,
+  ManuscriptStatus,
+  ReviewAssignment,
+  ReviewAssignmentStatus,
+  ReviewDecision,
+} from "./types";
 
 const LEGACY_STATUS_MAP: Record<string, ManuscriptStatus> = {
   draft: "new_submission",
@@ -18,6 +24,32 @@ export function inferResearchArea(keywords: string[]): string {
   if (keywords.length === 0) return "General Management";
   const first = keywords[0];
   return first.charAt(0).toUpperCase() + first.slice(1);
+}
+
+function inferReviewStatus(manuscriptStatus: ManuscriptStatus): ReviewAssignmentStatus {
+  if (
+    ["revision_required", "accepted", "scheduled", "published", "archived"].includes(
+      manuscriptStatus
+    )
+  ) {
+    return "completed";
+  }
+
+  if (manuscriptStatus === "under_review") {
+    return "in_review";
+  }
+
+  return "pending";
+}
+
+function inferEditorialDecision(
+  manuscriptStatus: ManuscriptStatus
+): ReviewDecision | undefined {
+  if (manuscriptStatus === "revision_required") return "major_revisions";
+  if (["accepted", "scheduled", "published", "archived"].includes(manuscriptStatus)) {
+    return "without_revisions";
+  }
+  return undefined;
 }
 
 export function normalizeManuscript(raw: Record<string, unknown>): Manuscript {
@@ -42,6 +74,27 @@ export function normalizeManuscript(raw: Record<string, unknown>): Manuscript {
   const trackingCode = (raw.trackingCode ?? raw.manuscriptId ?? raw.id) as string;
   const submittedAt = (raw.submittedAt as string) ?? new Date().toISOString();
   const status = normalizeStatus((raw.status as string) ?? "new_submission");
+  const reviewAssignments = Array.isArray(raw.reviewAssignments)
+    ? (raw.reviewAssignments as Array<Record<string, unknown>>)
+        .map((assignment) => ({
+          reviewerId: assignment.reviewerId as string,
+          status:
+            (assignment.status as ReviewAssignmentStatus | undefined) ??
+            inferReviewStatus(status),
+          decision: assignment.decision as ReviewDecision | undefined,
+          remarks: assignment.remarks as string | undefined,
+          updatedAt:
+            (assignment.updatedAt as string | undefined) ??
+            (raw.updatedAt as string | undefined) ??
+            submittedAt,
+        }))
+        .filter((assignment) => assignment.reviewerId)
+        .slice(0, 2)
+    : assignedReviewerIds.slice(0, 2).map<ReviewAssignment>((reviewerId) => ({
+        reviewerId,
+        status: inferReviewStatus(status),
+        updatedAt: (raw.updatedAt as string | undefined) ?? submittedAt,
+      }));
 
   return {
     id: raw.id as string,
@@ -57,7 +110,10 @@ export function normalizeManuscript(raw: Record<string, unknown>): Manuscript {
     status,
     submittedAt,
     updatedAt: (raw.updatedAt as string) ?? submittedAt,
-    assignedReviewerIds,
+    assignedReviewerIds: reviewAssignments.map((assignment) => assignment.reviewerId),
+    reviewAssignments,
+    editorialDecision:
+      (raw.editorialDecision as ReviewDecision | undefined) ?? inferEditorialDecision(status),
     issueId: raw.issueId as string | undefined,
     doi: raw.doi as string | undefined,
     email: raw.email as string | undefined,

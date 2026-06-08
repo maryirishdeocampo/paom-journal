@@ -9,7 +9,7 @@ import { ManuscriptViewer } from "@/components/admin/ManuscriptViewer";
 import { DataTable, type Column } from "@/components/ui/DataTable";
 import { SearchFilter, SelectFilter } from "@/components/ui/SearchFilter";
 import { StatusBadge } from "@/components/ui/Badge";
-import { RESEARCH_AREAS, STATUS_LABELS } from "@/lib/constants";
+import { REVIEW_STATUS_LABELS, RESEARCH_AREAS, STATUS_LABELS } from "@/lib/constants";
 import { formatIssueLabel, getCorrespondingAuthor } from "@/lib/manuscript-utils";
 import { getIssueById, getReviewerById } from "@/lib/store";
 import { useStore } from "@/hooks/useStore";
@@ -74,8 +74,8 @@ function ManuscriptsContent() {
 
       const matchesReviewer =
         reviewerFilter === "all" ||
-        (reviewerFilter === "none" && m.assignedReviewerIds.length === 0) ||
-        m.assignedReviewerIds.includes(reviewerFilter);
+        (reviewerFilter === "none" && m.reviewAssignments.length === 0) ||
+        m.reviewAssignments.some((assignment) => assignment.reviewerId === reviewerFilter);
 
       const matchesArea = areaFilter === "all" || m.researchArea === areaFilter;
 
@@ -147,13 +147,21 @@ function ManuscriptsContent() {
       key: "reviewers",
       header: "Assigned Reviewers",
       render: (m) => (
-        <span className="text-xs">
-          {m.assignedReviewerIds.length
-            ? m.assignedReviewerIds
-                .map((id) => getReviewerById(id)?.name?.split(" ").pop())
-                .join(", ")
-            : "—"}
-        </span>
+        <div className="space-y-1 text-xs">
+          {m.reviewAssignments.length ? (
+            m.reviewAssignments.map((assignment, index) => (
+              <div key={`${m.id}-${assignment.reviewerId}`} className="leading-tight">
+                <span className="font-medium">
+                  Reviewer {index + 1}:{" "}
+                  {getReviewerById(assignment.reviewerId)?.name?.split(" ").pop() ?? "—"}
+                </span>
+                <span className="text-muted"> · {REVIEW_STATUS_LABELS[assignment.status]}</span>
+              </div>
+            ))
+          ) : (
+            <span>—</span>
+          )}
+        </div>
       ),
     },
     {

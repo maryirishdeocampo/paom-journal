@@ -5,18 +5,31 @@ import { useEffect, useState } from "react";
 import { ReviewerSuggestions } from "@/components/forms/ReviewerSuggestions";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
+import { Textarea } from "@/components/ui/Input";
 import { StatusBadge } from "@/components/ui/Badge";
-import { MANUSCRIPT_WORKFLOW, RESEARCH_AREAS, STATUS_LABELS } from "@/lib/constants";
+import {
+  MANUSCRIPT_WORKFLOW,
+  RESEARCH_AREAS,
+  REVIEW_DECISION_LABELS,
+  REVIEW_STATUS_LABELS,
+  STATUS_LABELS,
+} from "@/lib/constants";
 import { automateExistingSubmission } from "@/lib/submission-automation";
 import {
   assignManuscriptToIssue,
-  assignReviewers,
   getIssues,
   getReviewerById,
   getReviewers,
   updateManuscript,
+  updateReviewAssignments,
 } from "@/lib/store";
-import type { Manuscript, ManuscriptStatus } from "@/lib/types";
+import type {
+  Manuscript,
+  ManuscriptStatus,
+  ReviewAssignment,
+  ReviewAssignmentStatus,
+  ReviewDecision,
+} from "@/lib/types";
 import { formatDate } from "@/lib/utils";
 import { getCorrespondingAuthor } from "@/lib/manuscript-utils";
 
@@ -24,6 +37,22 @@ interface ManuscriptEditorProps {
   manuscript: Manuscript | null;
   onViewManuscript: () => void;
   onSaved: () => void;
+}
+
+type ReviewSlot = {
+  reviewerId: string;
+  status: ReviewAssignmentStatus;
+  decision: ReviewDecision | "";
+  remarks: string;
+};
+
+function createEmptySlot(): ReviewSlot {
+  return {
+    reviewerId: "",
+    status: "pending",
+    decision: "",
+    remarks: "",
+  };
 }
 
 export function ManuscriptEditor({
@@ -34,18 +63,38 @@ export function ManuscriptEditor({
   const issues = getIssues();
   const allReviewers = getReviewers();
   const [status, setStatus] = useState<ManuscriptStatus>("new_submission");
-  const [reviewerIds, setReviewerIds] = useState<string[]>([]);
+  const [reviewSlots, setReviewSlots] = useState<ReviewSlot[]>([
+    createEmptySlot(),
+    createEmptySlot(),
+  ]);
   const [issueId, setIssueId] = useState("");
   const [researchArea, setResearchArea] = useState("");
   const [doi, setDoi] = useState("");
+  const [editorialDecision, setEditorialDecision] = useState<ReviewDecision | "">("");
+  const [saveError, setSaveError] = useState("");
 
   useEffect(() => {
     if (manuscript) {
+      setSaveError("");
       setStatus(manuscript.status);
-      setReviewerIds(manuscript.assignedReviewerIds);
+      const nextSlots = manuscript.reviewAssignments
+        .slice(0, 2)
+        .map<ReviewSlot>((assignment) => ({
+          reviewerId: assignment.reviewerId,
+          status: assignment.status,
+          decision: assignment.decision ?? "",
+          remarks: assignment.remarks ?? "",
+        }));
+
+      while (nextSlots.length < 2) {
+        nextSlots.push(createEmptySlot());
+      }
+
+      setReviewSlots(nextSlots);
       setIssueId(manuscript.issueId ?? "");
       setResearchArea(manuscript.researchArea);
       setDoi(manuscript.doi ?? "");
+      setEditorialDecision(manuscript.editorialDecision ?? "");
     }
   }, [manuscript]);
 
@@ -69,13 +118,59 @@ export function ManuscriptEditor({
     manuscript.manuscripts?.docx ||
     manuscript.manuscript;
 
+  const setReviewSlot = (index: number, patch: Partial<ReviewSlot>) => {
+    setReviewSlots((current) =>
+      current.map((slot, slotIndex) =>
+        slotIndex === index ? { ...slot, ...patch } : slot
+      )
+    );
+  };
+
+  const getReviewerOptions = (index: number) => {
+    const selectedByOthers = new Set(
+      reviewSlots
+        .filter((_, slotIndex) => slotIndex !== index)
+        .map((slot) => slot.reviewerId)
+        .filter(Boolean)
+    );
+
+    return allReviewers.filter(
+      (reviewer) =>
+        !selectedByOthers.has(reviewer.id) || reviewer.id === reviewSlots[index]?.reviewerId
+    );
+  };
+
   const save = () => {
+    const selectedReviewerCount = reviewSlots.filter((slot) => slot.reviewerId).length;
+    if (
+      ["under_review", "revision_required", "accepted", "scheduled", "published"].includes(
+        status
+      ) &&
+      selectedReviewerCount < 2
+    ) {
+      setSaveError("Assign two reviewers before saving manuscripts already in the review pipeline.");
+      return;
+    }
+
+    setSaveError("");
+    const now = new Date().toISOString();
+    const reviewAssignments: ReviewAssignment[] = reviewSlots
+      .filter((slot) => slot.reviewerId)
+      .map((slot) => ({
+        reviewerId: slot.reviewerId,
+        status: slot.status,
+        decision: slot.decision || undefined,
+        remarks: slot.remarks.trim() || undefined,
+        updatedAt: now,
+      }));
+
     updateManuscript(manuscript.id, {
       status,
       researchArea,
       doi: doi || undefined,
+      editorialDecision: editorialDecision || undefined,
     });
-    assignReviewers(manuscript.id, reviewerIds);
+    updateReviewAssignments(manuscript.id, reviewAssignments);
     assignManuscriptToIssue(manuscript.id, issueId || undefined);
     onSaved();
   };
@@ -136,34 +231,136 @@ export function ManuscriptEditor({
           </select>
         </div>
 
+        {reviewSlots.map((slot, index) => (
+          <div key={`review-slot-${index}`} className="space-y-3 rounded-xl border border-border p-3">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-xs font-semibold">Reviewer {index + 1}</p>
+              <StatusBadge variant={slot.status}>
+                {REVIEW_STATUS_LABELS[slot.status]}
+              </StatusBadge>
+            </div>
+
+            <div>
+              <label
+                htmlFor={`ms-reviewer-${index}`}
+                className="mb-1 block text-xs font-medium text-muted"
+              >
+                Assigned Reviewer
+              </label>
+              <select
+                id={`ms-reviewer-${index}`}
+                value={slot.reviewerId}
+                onChange={(e) => setReviewSlot(index, { reviewerId: e.target.value })}
+                className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm"
+              >
+                <option value="">— Select reviewer —</option>
+                {getReviewerOptions(index).map((reviewer) => {
+                  const suggested = automation.suggestedReviewers.some(
+                    (suggestion) => suggestion.reviewer.id === reviewer.id
+                  );
+                  return (
+                    <option key={reviewer.id} value={reviewer.id}>
+                      {suggested ? "★ " : ""}
+                      {reviewer.name}
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
+
+            <div>
+              <label
+                htmlFor={`ms-review-status-${index}`}
+                className="mb-1 block text-xs font-medium text-muted"
+              >
+                Review Status
+              </label>
+              <select
+                id={`ms-review-status-${index}`}
+                value={slot.status}
+                onChange={(e) =>
+                  setReviewSlot(index, {
+                    status: e.target.value as ReviewAssignmentStatus,
+                  })
+                }
+                className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm"
+              >
+                {Object.entries(REVIEW_STATUS_LABELS).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label
+                htmlFor={`ms-review-decision-${index}`}
+                className="mb-1 block text-xs font-medium text-muted"
+              >
+                Review Decision
+              </label>
+              <select
+                id={`ms-review-decision-${index}`}
+                value={slot.decision}
+                onChange={(e) =>
+                  setReviewSlot(index, {
+                    decision: e.target.value as ReviewDecision | "",
+                  })
+                }
+                className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm"
+              >
+                <option value="">— No decision yet —</option>
+                {Object.entries(REVIEW_DECISION_LABELS).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <Textarea
+              id={`ms-review-remarks-${index}`}
+              label="Reviewer Remarks"
+              placeholder="Add the reviewer’s remarks, requested revisions, or recommendation summary."
+              value={slot.remarks}
+              onChange={(e) => setReviewSlot(index, { remarks: e.target.value })}
+              className="min-h-[96px]"
+            />
+          </div>
+        ))}
+
+        <p className="text-[10px] text-muted">
+          Each manuscript can now carry two separate reviewer records with their own
+          progress, decision, and remarks.
+        </p>
+
+        {saveError && <p className="text-xs text-paom-red">{saveError}</p>}
+
         <div>
-          <label htmlFor="ms-reviewers" className="mb-1 block text-xs font-medium text-muted">
-            Assigned Reviewers
+          <label
+            htmlFor="ms-editorial-decision"
+            className="mb-1 block text-xs font-medium text-muted"
+          >
+            Overall Editorial Decision
           </label>
           <select
-            id="ms-reviewers"
-            multiple
-            value={reviewerIds}
-            onChange={(e) =>
-              setReviewerIds(
-                Array.from(e.target.selectedOptions, (o) => o.value)
-              )
-            }
-            className="h-24 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
+            id="ms-editorial-decision"
+            value={editorialDecision}
+            onChange={(e) => setEditorialDecision(e.target.value as ReviewDecision | "")}
+            className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm"
           >
-            {allReviewers.map((reviewer) => {
-              const suggested = automation.suggestedReviewers.some(
-                (s) => s.reviewer.id === reviewer.id
-              );
-              return (
-                <option key={reviewer.id} value={reviewer.id}>
-                  {suggested ? "★ " : ""}
-                  {reviewer.name}
-                </option>
-              );
-            })}
+            <option value="">— No final decision yet —</option>
+            {Object.entries(REVIEW_DECISION_LABELS).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
           </select>
-          <p className="mt-1 text-[10px] text-muted">Hold Cmd/Ctrl to select multiple. ★ = suggested</p>
+          <p className="mt-1 text-[10px] text-muted">
+            This decision is shown on the submitter-facing tracking page together with
+            reviewer progress.
+          </p>
         </div>
 
         <div>
@@ -212,10 +409,12 @@ export function ManuscriptEditor({
         </div>
       </div>
 
-      {reviewerIds.length > 0 && (
+      {reviewSlots.some((slot) => slot.reviewerId) && (
         <div className="border-t border-border pt-3 text-xs text-muted">
           Assigned:{" "}
-          {reviewerIds
+          {reviewSlots
+            .map((slot) => slot.reviewerId)
+            .filter(Boolean)
             .map((id) => getReviewerById(id)?.name)
             .filter(Boolean)
             .join(", ")}

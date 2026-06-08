@@ -5,24 +5,29 @@ import { AdminShell } from "@/components/admin/AdminShell";
 import { Card } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/Badge";
 import { useStore } from "@/hooks/useStore";
-import { getManuscripts } from "@/lib/store";
 
 export default function ReviewerPerformancePage() {
-  const { reviewers } = useStore();
-  const manuscripts = getManuscripts();
+  const { reviewers, manuscripts } = useStore();
 
   const stats = useMemo(() => {
     return reviewers.map((r) => {
-      const assigned = manuscripts.filter((m) =>
-        m.assignedReviewerIds.includes(r.id)
+      const assigned = manuscripts.flatMap((m) =>
+        m.reviewAssignments
+          .filter((assignment) => assignment.reviewerId === r.id)
+          .map((assignment) => ({ manuscript: m, assignment }))
       );
-      const completed = assigned.filter((m) =>
-        ["accepted", "scheduled", "published", "archived"].includes(m.status)
+      const completed = assigned.filter(
+        ({ assignment }) => assignment.status === "completed"
       );
-      const active = assigned.filter((m) =>
-        ["under_review", "revision_required"].includes(m.status)
+      const active = assigned.filter(
+        ({ assignment }) => assignment.status === "in_review"
       );
-      return { reviewer: r, assigned: assigned.length, completed: completed.length, active: active.length };
+      return {
+        reviewer: r,
+        assigned: assigned.length,
+        completed: completed.length,
+        active: active.length,
+      };
     });
   }, [reviewers, manuscripts]);
 

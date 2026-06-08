@@ -1,4 +1,8 @@
-import type { ManuscriptStatus } from "./types";
+import type {
+  ManuscriptStatus,
+  ReviewAssignmentStatus,
+  ReviewDecision,
+} from "./types";
 
 export const BRAND = {
   name: "Philippine Academy of Management",
@@ -48,6 +52,21 @@ export const STATUS_LABELS: Record<ManuscriptStatus | string, string> = {
   draft: "New Submission",
   submitted: "New Submission",
   revision: "Revision Required",
+};
+
+export const REVIEW_STATUS_LABELS: Record<ReviewAssignmentStatus, string> = {
+  pending: "Pending",
+  in_review: "In Review",
+  completed: "Completed",
+};
+
+export const REVIEW_DECISION_LABELS: Record<ReviewDecision, string> = {
+  major_revisions: "Major Revisions",
+  minor_revisions: "Minor Revisions",
+  without_revisions: "Without Revisions",
+  not_accepted: "Not Accepted",
+  encourage_resubmit: "Encourage to Resubmit",
+  reject: "Reject",
 };
 
 export const RESEARCH_AREAS = [

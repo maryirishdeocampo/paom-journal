@@ -4,17 +4,20 @@ import { useMemo } from "react";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { DataTable, type Column } from "@/components/ui/DataTable";
 import { StatusBadge } from "@/components/ui/Badge";
-import { STATUS_LABELS } from "@/lib/constants";
+import { REVIEW_DECISION_LABELS, REVIEW_STATUS_LABELS, STATUS_LABELS } from "@/lib/constants";
 import { getReviewerById } from "@/lib/store";
 import { useStore } from "@/hooks/useStore";
-import type { Manuscript } from "@/lib/types";
+import type { Manuscript, ReviewAssignmentStatus, ReviewDecision } from "@/lib/types";
 
 type Row = {
   id: string;
   reviewerName: string;
   manuscriptId: string;
   title: string;
-  status: Manuscript["status"];
+  manuscriptStatus: Manuscript["status"];
+  reviewStatus: ReviewAssignmentStatus;
+  reviewDecision: ReviewDecision | undefined;
+  remarks: string | undefined;
 };
 
 export default function ReviewerAssignmentsPage() {
@@ -22,16 +25,19 @@ export default function ReviewerAssignmentsPage() {
 
   const rows = useMemo(() => {
     return manuscripts.flatMap((manuscript) =>
-      manuscript.assignedReviewerIds
-        .map((reviewerId) => {
-          const reviewer = getReviewerById(reviewerId);
+      manuscript.reviewAssignments
+        .map((assignment) => {
+          const reviewer = getReviewerById(assignment.reviewerId);
           if (!reviewer) return null;
           return {
             id: `${manuscript.id}-${reviewer.id}`,
             reviewerName: reviewer.name,
             manuscriptId: manuscript.manuscriptId,
             title: manuscript.title,
-            status: manuscript.status,
+            manuscriptStatus: manuscript.status,
+            reviewStatus: assignment.status,
+            reviewDecision: assignment.decision,
+            remarks: assignment.remarks,
           };
         })
         .filter((row): row is Row => row !== null)
@@ -51,10 +57,42 @@ export default function ReviewerAssignmentsPage() {
       render: (r) => <span className="line-clamp-1 max-w-xs">{r.title}</span>,
     },
     {
-      key: "status",
+      key: "reviewStatus",
+      header: "Review Status",
+      render: (r) => (
+        <StatusBadge variant={r.reviewStatus}>
+          {REVIEW_STATUS_LABELS[r.reviewStatus]}
+        </StatusBadge>
+      ),
+    },
+    {
+      key: "decision",
+      header: "Decision",
+      render: (r) =>
+        r.reviewDecision ? (
+          <StatusBadge variant={r.reviewDecision}>
+            {REVIEW_DECISION_LABELS[r.reviewDecision]}
+          </StatusBadge>
+        ) : (
+          <span className="text-xs text-muted">—</span>
+        ),
+    },
+    {
+      key: "manuscriptStatus",
       header: "Manuscript Status",
       render: (r) => (
-        <StatusBadge variant={r.status}>{STATUS_LABELS[r.status]}</StatusBadge>
+        <StatusBadge variant={r.manuscriptStatus}>
+          {STATUS_LABELS[r.manuscriptStatus]}
+        </StatusBadge>
+      ),
+    },
+    {
+      key: "remarks",
+      header: "Remarks",
+      render: (r) => (
+        <span className="line-clamp-2 max-w-xs text-xs text-muted">
+          {r.remarks || "—"}
+        </span>
       ),
     },
   ];
