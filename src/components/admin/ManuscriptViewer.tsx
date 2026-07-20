@@ -35,9 +35,6 @@ export function ManuscriptViewer({
   const [pdfUrl, setPdfUrl] = useState("");
   const [pdfError, setPdfError] = useState("");
 
-  const pdfDataUrl = files.pdf?.dataUrl;
-  const pdfFileName = files.pdf?.fileName;
-
   useEffect(() => {
     if (!open || !files.pdf) {
       setPdfUrl("");
