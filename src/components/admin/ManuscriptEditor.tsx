@@ -358,8 +358,8 @@ export function ManuscriptEditor({
             ))}
           </select>
           <p className="mt-1 text-[10px] text-muted">
-            This decision is shown on the submitter-facing tracking page together with
-            reviewer progress.
+            Only the overall editorial decision is shown to authors. Individual reviewer
+            identities and remarks remain confidential.
           </p>
         </div>
 

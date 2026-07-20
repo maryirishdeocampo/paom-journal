@@ -5,17 +5,15 @@ import { CheckCircle2, FileUp, Loader2, Sparkles } from "lucide-react";
 import { useCallback, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { ReviewerSuggestions } from "@/components/forms/ReviewerSuggestions";
 import { Button } from "@/components/ui/Button";
 import { Input, Textarea } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { extractKeywordsFromAbstract, mergeKeywords } from "@/lib/keywords";
 import { runSubmissionAutomation } from "@/lib/submission-automation";
-import { addManuscript } from "@/lib/store";
+import { readUploadAsManuscriptFile } from "@/lib/manuscript-files";
 import { inferResearchArea } from "@/lib/manuscript-utils";
-import type { ReviewerSuggestion } from "@/lib/reviewer-matching";
-import type { ManuscriptFile } from "@/lib/types";
+import { addManuscript } from "@/lib/store";
 import { generateTrackingCode } from "@/lib/utils";
 
 const MAX_FILE_BYTES = 3 * 1024 * 1024;
@@ -88,8 +86,6 @@ export function SubmissionForm() {
   const [fileError, setFileError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [suggestedKeywords, setSuggestedKeywords] = useState<string[]>([]);
-  const [reviewerSuggestions, setReviewerSuggestions] = useState<ReviewerSuggestion[]>([]);
-  const [finalKeywords, setFinalKeywords] = useState<string[]>([]);
 
   const {
     register,
@@ -117,19 +113,6 @@ export function SubmissionForm() {
     const merged = mergeKeywords(current, suggestedKeywords);
     setValue("keywords", merged.join(", "));
   };
-
-  const readFileAsDataUrl = (file: File): Promise<ManuscriptFile> =>
-    new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () =>
-        resolve({
-          fileName: file.name,
-          fileType: file.type || "application/octet-stream",
-          dataUrl: reader.result as string,
-        });
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
 
   const validateFile = (file: File, type: "pdf" | "docx"): string | null => {
     if (file.size > MAX_FILE_BYTES) {
@@ -170,13 +153,10 @@ export function SubmissionForm() {
       keywords: data.keywords,
     });
 
-    setFinalKeywords(automation.keywords);
-    setReviewerSuggestions(automation.suggestedReviewers);
-
     try {
       const [pdf, docx] = await Promise.all([
-        readFileAsDataUrl(pdfFile),
-        readFileAsDataUrl(docxFile),
+        readUploadAsManuscriptFile(pdfFile),
+        readUploadAsManuscriptFile(docxFile),
       ]);
 
       const now = new Date().toISOString();
@@ -206,8 +186,15 @@ export function SubmissionForm() {
       setPdfFile(null);
       setDocxFile(null);
       setSuggestedKeywords([]);
-    } catch {
-      setFileError("Could not read files. Please try again.");
+    } catch (error) {
+      const storageFull =
+        error instanceof DOMException &&
+        (error.name === "QuotaExceededError" || error.name === "NS_ERROR_DOM_QUOTA_REACHED");
+      setFileError(
+        storageFull
+          ? "These files exceed this browser’s offline storage. Upload smaller PDF and DOCX files, or connect the production file-storage service."
+          : "Could not save the manuscript files. Please verify both files and try again."
+      );
     }
 
     setIsSubmitting(false);
@@ -315,8 +302,8 @@ export function SubmissionForm() {
             />
             {titleValue && abstractValue && abstractValue.length >= 100 && (
               <p className="text-xs text-muted">
-                On submit, keywords will be extracted from your abstract and matched to
-                suitable reviewers automatically.
+                On submit, keywords will be extracted from your abstract to help editors
+                route your manuscript through the blind peer-review process.
               </p>
             )}
           </div>
@@ -399,10 +386,10 @@ export function SubmissionForm() {
             </div>
           </div>
 
-          <ReviewerSuggestions
-            suggestions={reviewerSuggestions}
-            extractedKeywords={finalKeywords}
-          />
+          <p className="rounded-xl border border-border bg-background p-3 text-sm text-muted">
+            Your manuscript will be assigned through PAoM&rsquo;s blind peer-review
+            process. Reviewer identities are kept confidential.
+          </p>
 
           <div className="flex gap-3">
             <Button variant="outline" className="flex-1" onClick={copyCode}>

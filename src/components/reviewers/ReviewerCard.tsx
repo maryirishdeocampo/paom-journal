@@ -2,7 +2,7 @@
 
 import { Mail } from "lucide-react";
 import type { Reviewer } from "@/lib/types";
-import { getInitials } from "@/lib/utils";
+import { formatDate, getInitials } from "@/lib/utils";
 import { Card } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/Badge";
 
@@ -39,11 +39,31 @@ export function ReviewerCard({ reviewer, showWorkload = false }: ReviewerCardPro
             ))}
           </div>
           {showWorkload && (
-            <p className="mt-2 text-xs text-muted">
-              {reviewer.activeReviews} active review
-              {reviewer.activeReviews !== 1 ? "s" : ""}
-              {reviewer.deadline && ` · Next deadline: ${reviewer.deadline}`}
-            </p>
+            <div className="mt-3 space-y-1 rounded-lg bg-background px-3 py-2 text-xs text-muted">
+              <p>
+                {reviewer.activeReviews} active review
+                {reviewer.activeReviews !== 1 ? "s" : ""}
+                {reviewer.deadline && (
+                  <>
+                    {" · "}
+                    <span className="font-medium text-foreground">
+                      Deadline: {formatDate(reviewer.deadline)}
+                    </span>
+                  </>
+                )}
+              </p>
+              {!reviewer.deadline && (
+                <p>
+                  Deadline: <span className="text-muted">Not set</span>
+                </p>
+              )}
+              <p>
+                Follow-up:{" "}
+                <span className="font-medium text-foreground">
+                  {reviewer.followUpDate ? formatDate(reviewer.followUpDate) : "Not set"}
+                </span>
+              </p>
+            </div>
           )}
           {!showWorkload && (
             <div className="mt-2 flex items-center gap-1 text-xs text-muted">

@@ -20,6 +20,8 @@ export const CONTACT = {
   email: "contact@paomassociation.org",
 } as const;
 
+export const OFFICIAL_ISSUES_URL = "https://paomassociation.org/paom-e-journal/issues/" as const;
+
 export const PUBLIC_NAV = [
   { href: "/", label: "Home" },
   { href: "/submit", label: "Submit" },

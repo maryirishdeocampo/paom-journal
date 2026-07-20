@@ -1,9 +1,14 @@
 "use client";
 
-import { Download, FileText, X } from "lucide-react";
+import { Download, ExternalLink, FileText, X } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { ManuscriptFile, SubmissionManuscripts } from "@/lib/types";
+import {
+  createPreviewUrl,
+  normalizeManuscriptFiles,
+  resolveManuscriptMimeType,
+} from "@/lib/manuscript-files";
 import { Button } from "@/components/ui/Button";
 
 interface ManuscriptViewerProps {
@@ -15,21 +20,6 @@ interface ManuscriptViewerProps {
   title?: string;
 }
 
-function normalizeManuscripts(
-  manuscripts?: SubmissionManuscripts,
-  legacy?: ManuscriptFile
-): SubmissionManuscripts {
-  const result: SubmissionManuscripts = { ...manuscripts };
-  if (legacy && !result.pdf && !result.docx) {
-    const isPdf =
-      legacy.fileType === "application/pdf" ||
-      legacy.fileName.toLowerCase().endsWith(".pdf");
-    if (isPdf) result.pdf = legacy;
-    else result.docx = legacy;
-  }
-  return result;
-}
-
 export function ManuscriptViewer({
   open,
   onClose,
@@ -37,14 +27,54 @@ export function ManuscriptViewer({
   manuscript,
   title,
 }: ManuscriptViewerProps) {
-  const files = normalizeManuscripts(manuscripts, manuscript);
+  const files = useMemo(
+    () => normalizeManuscriptFiles(manuscripts, manuscript),
+    [manuscript, manuscripts]
+  );
   const [activeTab, setActiveTab] = useState<"pdf" | "docx">("pdf");
+  const [pdfUrl, setPdfUrl] = useState("");
+  const [pdfError, setPdfError] = useState("");
 
-  const download = (file: ManuscriptFile) => {
-    const a = document.createElement("a");
-    a.href = file.dataUrl;
-    a.download = file.fileName;
-    a.click();
+  const pdfDataUrl = files.pdf?.dataUrl;
+  const pdfFileName = files.pdf?.fileName;
+
+  useEffect(() => {
+    if (!open || !files.pdf) {
+      setPdfUrl("");
+      setPdfError("");
+      return;
+    }
+
+    let preview: { url: string; revoke: boolean } | null = null;
+
+    try {
+      preview = createPreviewUrl(files.pdf);
+      setPdfUrl(preview.url);
+      setPdfError("");
+    } catch (err) {
+      console.error("PDF preview error:", err);
+      setPdfUrl("");
+      setPdfError("This PDF could not be loaded. The stored file may be incomplete or corrupted.");
+    }
+
+    return () => {
+      if (preview?.revoke && preview.url.startsWith("blob:")) {
+        URL.revokeObjectURL(preview.url);
+      }
+    };
+  }, [files.pdf, open]);
+
+  useEffect(() => {
+    if (open && !files.pdf && files.docx) setActiveTab("docx");
+    if (open && files.pdf) setActiveTab("pdf");
+  }, [files.docx, files.pdf, open]);
+
+  const download = (file: ManuscriptFile, url?: string) => {
+    const href = url ?? createPreviewUrl(file).url;
+    const anchor = document.createElement("a");
+    anchor.href = href;
+    anchor.download = file.fileName;
+    anchor.click();
   };
 
   const hasPdf = !!files.pdf;
@@ -129,11 +159,30 @@ export function ManuscriptViewer({
                   <p>No manuscript files uploaded for this submission.</p>
                 </div>
               ) : activeTab === "pdf" && files.pdf ? (
-                <iframe
-                  src={files.pdf.dataUrl}
-                  title={files.pdf.fileName}
-                  className="h-[70vh] w-full rounded-xl border border-border"
-                />
+                pdfUrl ? (
+                  <iframe
+                    src={`${pdfUrl}#view=FitH`}
+                    title={files.pdf.fileName}
+                    className="h-[70vh] w-full rounded-xl border border-border bg-white"
+                  />
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-16 text-center">
+                    <FileText className="mb-3 h-12 w-12 text-paom-red" />
+                    <p className="font-medium">PDF preview unavailable</p>
+                    <p className="mt-2 max-w-sm text-sm text-muted">
+                      {pdfError || "Preparing the PDF preview…"}
+                    </p>
+                    {files.pdf && (
+                      <Button
+                        className="mt-4"
+                        onClick={() => download(files.pdf!)}
+                      >
+                        <Download className="h-4 w-4" />
+                        Download PDF
+                      </Button>
+                    )}
+                  </div>
+                )
               ) : activeFile ? (
                 <div className="flex flex-col items-center justify-center py-16 text-center">
                   <FileText className="mb-3 h-12 w-12 text-paom-blue" />
@@ -151,11 +200,28 @@ export function ManuscriptViewer({
             </div>
 
             {activeFile && activeTab === "pdf" && files.pdf && (
-              <div className="border-t border-border p-4">
-                <Button variant="outline" size="sm" onClick={() => download(files.pdf!)}>
+              <div className="flex flex-wrap gap-2 border-t border-border p-4">
+                {pdfUrl && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => window.open(pdfUrl, "_blank", "noopener,noreferrer")}
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    Open PDF
+                  </Button>
+                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => download(files.pdf!, pdfUrl || undefined)}
+                >
                   <Download className="h-4 w-4" />
                   Download PDF
                 </Button>
+                <p className="w-full text-[10px] text-muted">
+                  {resolveManuscriptMimeType(files.pdf)}
+                </p>
               </div>
             )}
           </motion.div>

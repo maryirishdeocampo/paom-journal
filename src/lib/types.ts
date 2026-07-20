@@ -81,6 +81,7 @@ export interface Reviewer {
   activeReviews: number;
   email: string;
   deadline?: string;
+  followUpDate?: string;
 }
 
 export interface JournalIssue {

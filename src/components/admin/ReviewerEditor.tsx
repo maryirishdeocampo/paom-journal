@@ -1,28 +1,35 @@
 "use client";
 
-import { Pencil, Save } from "lucide-react";
+import { Pencil, Plus, Save } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { StatusBadge } from "@/components/ui/Badge";
-import { updateReviewer } from "@/lib/store";
+import { addReviewer, updateReviewer } from "@/lib/store";
 import type { Reviewer } from "@/lib/types";
 
 interface ReviewerEditorProps {
   reviewer: Reviewer | null;
+  adding?: boolean;
   onSaved: () => void;
 }
 
-export function ReviewerEditor({ reviewer, onSaved }: ReviewerEditorProps) {
+const EMPTY_FORM = {
+  name: "",
+  affiliation: "",
+  email: "",
+  expertise: "",
+  availability: "available" as Reviewer["availability"],
+  deadline: "",
+  followUpDate: "",
+};
+
+export function ReviewerEditor({ reviewer, adding = false, onSaved }: ReviewerEditorProps) {
   const [form, setForm] = useState({
-    name: "",
-    affiliation: "",
-    email: "",
-    expertise: "",
-    availability: "available" as Reviewer["availability"],
-    deadline: "",
+    ...EMPTY_FORM,
   });
+  const [error, setError] = useState("");
 
   useEffect(() => {
     if (reviewer) {
@@ -33,33 +40,55 @@ export function ReviewerEditor({ reviewer, onSaved }: ReviewerEditorProps) {
         expertise: reviewer.expertise.join(", "),
         availability: reviewer.availability,
         deadline: reviewer.deadline ?? "",
+        followUpDate: reviewer.followUpDate ?? "",
       });
+      setError("");
+    } else if (adding) {
+      setForm({ ...EMPTY_FORM });
+      setError("");
     }
-  }, [reviewer]);
+  }, [adding, reviewer]);
 
-  if (!reviewer) {
+  if (!reviewer && !adding) {
     return (
       <Card className="h-fit">
         <CardHeader>
           <CardTitle>Edit Reviewer</CardTitle>
         </CardHeader>
         <p className="text-sm text-muted">
-          Click <Pencil className="inline h-3 w-3" /> on a reviewer card to edit their
-          profile, availability, and expertise.
+          Click <Pencil className="inline h-3 w-3" /> to edit a reviewer, or use Add
+          Reviewer to create a new profile.
         </p>
       </Card>
     );
   }
 
   const save = () => {
-    updateReviewer(reviewer.id, {
+    if (!form.name.trim() || !form.affiliation.trim() || !form.email.trim()) {
+      setError("Name, affiliation, and email are required.");
+      return;
+    }
+
+    const reviewerData = {
       name: form.name,
       affiliation: form.affiliation,
       email: form.email,
       expertise: form.expertise.split(",").map((e) => e.trim()).filter(Boolean),
       availability: form.availability,
       deadline: form.deadline || undefined,
-    });
+      followUpDate: form.followUpDate || undefined,
+    };
+
+    if (adding) {
+      addReviewer({
+        id: `r-${Date.now().toString(36)}`,
+        activeReviews: 0,
+        ...reviewerData,
+      });
+    } else if (reviewer) {
+      updateReviewer(reviewer.id, reviewerData);
+    }
+
     onSaved();
   };
 
@@ -67,10 +96,12 @@ export function ReviewerEditor({ reviewer, onSaved }: ReviewerEditorProps) {
     <Card className="h-fit">
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle>Edit Reviewer</CardTitle>
-          <StatusBadge variant={reviewer.availability}>
-            {reviewer.activeReviews} active
-          </StatusBadge>
+          <CardTitle>{adding ? "Add Reviewer" : "Edit Reviewer"}</CardTitle>
+          {reviewer && (
+            <StatusBadge variant={reviewer.availability}>
+              {reviewer.activeReviews} active
+            </StatusBadge>
+          )}
         </div>
       </CardHeader>
       <div className="space-y-3">
@@ -121,14 +152,22 @@ export function ReviewerEditor({ reviewer, onSaved }: ReviewerEditorProps) {
         </div>
         <Input
           id="rev-deadline"
-          label="Next Deadline"
+          label="Review Deadline"
           type="date"
           value={form.deadline}
           onChange={(e) => setForm({ ...form, deadline: e.target.value })}
         />
+        <Input
+          id="rev-follow-up"
+          label="Follow-up Date"
+          type="date"
+          value={form.followUpDate}
+          onChange={(e) => setForm({ ...form, followUpDate: e.target.value })}
+        />
+        {error && <p className="text-xs text-paom-red">{error}</p>}
         <Button onClick={save} className="w-full">
-          <Save className="h-4 w-4" />
-          Save Reviewer
+          {adding ? <Plus className="h-4 w-4" /> : <Save className="h-4 w-4" />}
+          {adding ? "Add Reviewer" : "Save Reviewer"}
         </Button>
       </div>
     </Card>

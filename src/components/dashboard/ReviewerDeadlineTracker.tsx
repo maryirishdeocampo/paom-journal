@@ -12,8 +12,12 @@ interface ReviewerDeadlineTrackerProps {
 
 export function ReviewerDeadlineTracker({ reviewers }: ReviewerDeadlineTrackerProps) {
   const withDeadlines = reviewers
-    .filter((r) => r.deadline && r.activeReviews > 0)
-    .sort((a, b) => new Date(a.deadline!).getTime() - new Date(b.deadline!).getTime());
+    .filter((r) => (r.deadline || r.followUpDate) && r.activeReviews > 0)
+    .sort((a, b) => {
+      const aDate = new Date(a.deadline ?? a.followUpDate ?? 0).getTime();
+      const bDate = new Date(b.deadline ?? b.followUpDate ?? 0).getTime();
+      return aDate - bDate;
+    });
 
   return (
     <Card>
@@ -25,8 +29,9 @@ export function ReviewerDeadlineTracker({ reviewers }: ReviewerDeadlineTrackerPr
       </CardHeader>
       <div className="space-y-3">
         {withDeadlines.map((reviewer) => {
+          const targetDate = reviewer.deadline ?? reviewer.followUpDate!;
           const daysLeft = Math.ceil(
-            (new Date(reviewer.deadline!).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+            (new Date(targetDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
           );
           const urgent = daysLeft <= 7;
 
@@ -41,12 +46,21 @@ export function ReviewerDeadlineTracker({ reviewers }: ReviewerDeadlineTrackerPr
                   {reviewer.activeReviews} active review
                   {reviewer.activeReviews !== 1 ? "s" : ""}
                 </p>
+                {reviewer.deadline && (
+                  <p className="mt-1 text-xs">
+                    Deadline: {formatDate(reviewer.deadline)}
+                  </p>
+                )}
+                {reviewer.followUpDate && (
+                  <p className="text-xs text-muted">
+                    Follow-up: {formatDate(reviewer.followUpDate)}
+                  </p>
+                )}
               </div>
               <div className="flex items-center gap-2">
                 {urgent && <AlertCircle className="h-4 w-4 text-paom-red" />}
                 <div className="text-right">
-                  <p className="text-xs font-medium">{formatDate(reviewer.deadline!)}</p>
-                  <StatusBadge variant={urgent ? "revision" : "available"}>
+                  <StatusBadge variant={urgent ? "revision_required" : "available"}>
                     {daysLeft > 0 ? `${daysLeft}d left` : "Overdue"}
                   </StatusBadge>
                 </div>

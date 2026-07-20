@@ -8,11 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { StatusBadge } from "@/components/ui/Badge";
-import {
-  REVIEW_DECISION_LABELS,
-  REVIEW_STATUS_LABELS,
-  STATUS_LABELS,
-} from "@/lib/constants";
+import { REVIEW_DECISION_LABELS, STATUS_LABELS } from "@/lib/constants";
 import { getManuscriptByCode } from "@/lib/store";
 import { formatDate } from "@/lib/utils";
 import type { Manuscript } from "@/lib/types";
@@ -30,6 +26,10 @@ function MySubmissionsContent() {
     setSearched(true);
     setResult(getManuscriptByCode(code) ?? null);
   };
+
+  const reviewsInProgress = result
+    ? result.reviewAssignments.filter((assignment) => assignment.status !== "completed").length
+    : 0;
 
   return (
     <PageTransition>
@@ -84,54 +84,29 @@ function MySubmissionsContent() {
                   <span>Keywords: {result.keywords.join(", ")}</span>
                 </div>
 
-                {(result.editorialDecision || result.reviewAssignments.length > 0) && (
-                  <div className="mt-5 space-y-3 border-t border-border pt-4">
+                <div className="mt-5 space-y-3 border-t border-border pt-4">
+                  <p className="rounded-xl border border-paom-blue/20 bg-paom-blue/5 p-3 text-sm text-muted">
+                    This manuscript is processed through PAoM&rsquo;s blind peer-review
+                    workflow. Reviewer identities and individual review notes are not
+                    disclosed to authors.
+                  </p>
+
+                  {reviewsInProgress > 0 && (
+                    <p className="text-sm text-muted">
+                      {reviewsInProgress} peer review
+                      {reviewsInProgress !== 1 ? "s" : ""} currently in progress.
+                    </p>
+                  )}
+
+                  {result.editorialDecision && (
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-sm font-medium">Latest Review Decision:</span>
-                      {result.editorialDecision ? (
-                        <StatusBadge variant={result.editorialDecision}>
-                          {REVIEW_DECISION_LABELS[result.editorialDecision]}
-                        </StatusBadge>
-                      ) : (
-                        <span className="text-sm text-muted">Awaiting editorial decision</span>
-                      )}
+                      <span className="text-sm font-medium">Editorial Decision:</span>
+                      <StatusBadge variant={result.editorialDecision}>
+                        {REVIEW_DECISION_LABELS[result.editorialDecision]}
+                      </StatusBadge>
                     </div>
-
-                    {result.reviewAssignments.length > 0 && (
-                      <div className="space-y-3">
-                        {result.reviewAssignments.map((assignment, index) => (
-                          <div
-                            key={`${result.id}-${assignment.reviewerId}-${index}`}
-                            className="rounded-xl border border-border bg-background/60 p-3"
-                          >
-                            <div className="flex flex-wrap items-center justify-between gap-2">
-                              <p className="text-sm font-medium">Reviewer {index + 1}</p>
-                              <StatusBadge variant={assignment.status}>
-                                {REVIEW_STATUS_LABELS[assignment.status]}
-                              </StatusBadge>
-                            </div>
-
-                            <div className="mt-2 flex flex-wrap gap-2">
-                              {assignment.decision ? (
-                                <StatusBadge variant={assignment.decision}>
-                                  {REVIEW_DECISION_LABELS[assignment.decision]}
-                                </StatusBadge>
-                              ) : (
-                                <span className="text-xs text-muted">
-                                  No decision submitted yet
-                                </span>
-                              )}
-                            </div>
-
-                            <p className="mt-3 text-sm leading-relaxed text-muted">
-                              {assignment.remarks || "No reviewer remarks have been posted yet."}
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
+                  )}
+                </div>
               </Card>
             ) : (
               <Card className="text-center">

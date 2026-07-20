@@ -243,6 +243,7 @@ export const reviewers: Reviewer[] = [
     activeReviews: 3,
     email: "e.villanueva@up.edu.ph",
     deadline: "2026-04-15",
+    followUpDate: "2026-04-10",
   },
   {
     id: "r2",
