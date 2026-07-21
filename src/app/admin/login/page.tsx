@@ -20,12 +20,11 @@ export default function AdminLoginPage() {
     setLoading(true);
     setError("");
 
-    // Demo credentials: admin@paom.org / admin123
     if (email === "admin@paom.org" && password === "admin123") {
       document.cookie = "paom-admin=true; path=/; max-age=86400";
       router.push("/admin");
     } else {
-      setError("Invalid credentials. Use admin@paom.org / admin123 for demo.");
+      setError("Invalid email or password.");
     }
     setLoading(false);
   };
@@ -72,9 +71,6 @@ export default function AdminLoginPage() {
               {loading ? "Signing in..." : "Sign In"}
             </Button>
           </form>
-          <p className="mt-4 text-center text-xs text-muted">
-            Demo: admin@paom.org / admin123
-          </p>
         </Card>
       </div>
     </div>
