@@ -57,12 +57,6 @@ export function ReviewerCard({ reviewer, showWorkload = false }: ReviewerCardPro
                   Deadline: <span className="text-muted">Not set</span>
                 </p>
               )}
-              <p>
-                Follow-up:{" "}
-                <span className="font-medium text-foreground">
-                  {reviewer.followUpDate ? formatDate(reviewer.followUpDate) : "Not set"}
-                </span>
-              </p>
             </div>
           )}
           {!showWorkload && (
