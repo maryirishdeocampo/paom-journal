@@ -7,6 +7,11 @@ import type {
   Reviewer,
 } from "./types";
 import { inferResearchArea } from "./manuscript-utils";
+import {
+  addDays,
+  FOLLOW_UP_DAYS,
+  REVIEWER_RESPONSE_DAYS,
+} from "./review-assignment-automation";
 
 export const publicStats: DashboardStats = {
   totalSubmissions: 1247,
@@ -21,12 +26,16 @@ function buildReviewAssignment(
   decision?: ReviewDecision,
   remarks?: string
 ): ReviewAssignment {
+  const assignedAt = new Date().toISOString();
   return {
     reviewerId,
     status,
     decision,
     remarks,
-    updatedAt: new Date().toISOString(),
+    assignedAt,
+    followUpDate: addDays(new Date(assignedAt), FOLLOW_UP_DAYS),
+    responseDeadline: addDays(new Date(assignedAt), REVIEWER_RESPONSE_DAYS),
+    updatedAt: assignedAt,
   };
 }
 

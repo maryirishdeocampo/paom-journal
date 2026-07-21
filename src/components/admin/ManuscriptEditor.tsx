@@ -153,15 +153,16 @@ export function ManuscriptEditor({
     }
 
     setSaveError("");
-    const now = new Date().toISOString();
-    const reviewAssignments: ReviewAssignment[] = reviewSlots
+    const reviewAssignments: Array<
+      Pick<ReviewAssignment, "reviewerId" | "status"> &
+        Partial<Pick<ReviewAssignment, "decision" | "remarks">>
+    > = reviewSlots
       .filter((slot) => slot.reviewerId)
       .map((slot) => ({
         reviewerId: slot.reviewerId,
         status: slot.status,
         decision: slot.decision || undefined,
         remarks: slot.remarks.trim() || undefined,
-        updatedAt: now,
       }));
 
     updateManuscript(manuscript.id, {
@@ -250,7 +251,12 @@ export function ManuscriptEditor({
               <select
                 id={`ms-reviewer-${index}`}
                 value={slot.reviewerId}
-                onChange={(e) => setReviewSlot(index, { reviewerId: e.target.value })}
+                onChange={(e) =>
+                  setReviewSlot(index, {
+                    ...createEmptySlot(),
+                    reviewerId: e.target.value,
+                  })
+                }
                 className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm"
               >
                 <option value="">— Select reviewer —</option>

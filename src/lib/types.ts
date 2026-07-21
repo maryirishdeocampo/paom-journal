@@ -40,6 +40,14 @@ export interface ReviewAssignment {
   status: ReviewAssignmentStatus;
   decision?: ReviewDecision;
   remarks?: string;
+  /** When this reviewer was assigned to this specific manuscript. */
+  assignedAt: string;
+  /** Automatic reminder date, seven days after assignment. */
+  followUpDate: string;
+  /** Automatic replacement threshold, fourteen days after assignment. */
+  responseDeadline: string;
+  /** Reviewers previously replaced in this assignment slot. */
+  previousReviewerIds?: string[];
   updatedAt?: string;
 }
 

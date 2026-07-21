@@ -76,7 +76,7 @@ export default function AdminDashboardPage() {
               <RecentSubmissionsTable submissions={manuscripts} />
             </Card>
           </div>
-          <ReviewerDeadlineTracker reviewers={reviewers} />
+          <ReviewerDeadlineTracker reviewers={reviewers} manuscripts={manuscripts} />
         </div>
 
         <div className="grid gap-6 lg:grid-cols-2">

@@ -19,8 +19,9 @@ type Row = {
   reviewStatus: ReviewAssignmentStatus;
   reviewDecision: ReviewDecision | undefined;
   remarks: string | undefined;
-  deadline: string | undefined;
-  followUpDate: string | undefined;
+  assignedAt: string;
+  responseDeadline: string;
+  followUpDate: string;
 };
 
 export default function ReviewerAssignmentsPage() {
@@ -41,8 +42,9 @@ export default function ReviewerAssignmentsPage() {
             reviewStatus: assignment.status,
             reviewDecision: assignment.decision,
             remarks: assignment.remarks,
-            deadline: reviewer.deadline,
-            followUpDate: reviewer.followUpDate,
+            assignedAt: assignment.assignedAt,
+            responseDeadline: assignment.responseDeadline,
+            followUpDate: assignment.followUpDate,
           };
         })
         .filter((row): row is Row => row !== null)
@@ -92,13 +94,16 @@ export default function ReviewerAssignmentsPage() {
       ),
     },
     {
-      key: "deadline",
-      header: "Follow-up / Deadline",
+      key: "timing",
+      header: "Assignment Timing",
       render: (r) => (
         <div className="space-y-0.5 text-xs">
-          <p>Deadline: {r.deadline ? formatDate(r.deadline) : "Not set"}</p>
+          <p>Assigned: {formatDate(r.assignedAt)}</p>
           <p className="text-muted">
-            Follow-up: {r.followUpDate ? formatDate(r.followUpDate) : "Not set"}
+            Follow-up: {formatDate(r.followUpDate)}
+          </p>
+          <p className="text-muted">
+            Response due: {formatDate(r.responseDeadline)}
           </p>
         </div>
       ),

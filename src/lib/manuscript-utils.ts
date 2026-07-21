@@ -5,6 +5,11 @@ import type {
   ReviewAssignmentStatus,
   ReviewDecision,
 } from "./types";
+import {
+  addDays,
+  FOLLOW_UP_DAYS,
+  REVIEWER_RESPONSE_DAYS,
+} from "./review-assignment-automation";
 
 const LEGACY_STATUS_MAP: Record<string, ManuscriptStatus> = {
   draft: "new_submission",
@@ -76,25 +81,49 @@ export function normalizeManuscript(raw: Record<string, unknown>): Manuscript {
   const status = normalizeStatus((raw.status as string) ?? "new_submission");
   const reviewAssignments = Array.isArray(raw.reviewAssignments)
     ? (raw.reviewAssignments as Array<Record<string, unknown>>)
-        .map((assignment) => ({
-          reviewerId: assignment.reviewerId as string,
-          status:
-            (assignment.status as ReviewAssignmentStatus | undefined) ??
-            inferReviewStatus(status),
-          decision: assignment.decision as ReviewDecision | undefined,
-          remarks: assignment.remarks as string | undefined,
-          updatedAt:
+        .map((assignment) => {
+          const assignedAt =
+            (assignment.assignedAt as string | undefined) ??
             (assignment.updatedAt as string | undefined) ??
             (raw.updatedAt as string | undefined) ??
-            submittedAt,
-        }))
+            submittedAt;
+
+          return {
+            reviewerId: assignment.reviewerId as string,
+            status:
+              (assignment.status as ReviewAssignmentStatus | undefined) ??
+              inferReviewStatus(status),
+            decision: assignment.decision as ReviewDecision | undefined,
+            remarks: assignment.remarks as string | undefined,
+            assignedAt,
+            followUpDate:
+              (assignment.followUpDate as string | undefined) ??
+              addDays(new Date(assignedAt), FOLLOW_UP_DAYS),
+            responseDeadline:
+              (assignment.responseDeadline as string | undefined) ??
+              addDays(new Date(assignedAt), REVIEWER_RESPONSE_DAYS),
+            previousReviewerIds: Array.isArray(assignment.previousReviewerIds)
+              ? (assignment.previousReviewerIds as string[])
+              : undefined,
+            updatedAt:
+              (assignment.updatedAt as string | undefined) ??
+              (raw.updatedAt as string | undefined) ??
+              submittedAt,
+          };
+        })
         .filter((assignment) => assignment.reviewerId)
         .slice(0, 2)
-    : assignedReviewerIds.slice(0, 2).map<ReviewAssignment>((reviewerId) => ({
-        reviewerId,
-        status: inferReviewStatus(status),
-        updatedAt: (raw.updatedAt as string | undefined) ?? submittedAt,
-      }));
+    : assignedReviewerIds.slice(0, 2).map<ReviewAssignment>((reviewerId) => {
+        const assignedAt = (raw.updatedAt as string | undefined) ?? submittedAt;
+        return {
+          reviewerId,
+          status: inferReviewStatus(status),
+          assignedAt,
+          followUpDate: addDays(new Date(assignedAt), FOLLOW_UP_DAYS),
+          responseDeadline: addDays(new Date(assignedAt), REVIEWER_RESPONSE_DAYS),
+          updatedAt: assignedAt,
+        };
+      });
 
   return {
     id: raw.id as string,

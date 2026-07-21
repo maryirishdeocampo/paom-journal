@@ -14,7 +14,14 @@ export function useStore() {
   useEffect(() => {
     refresh();
     window.addEventListener(STORE_UPDATE_EVENT, refresh);
-    return () => window.removeEventListener(STORE_UPDATE_EVENT, refresh);
+    window.addEventListener("focus", refresh);
+    const automationTimer = window.setInterval(refresh, 60_000);
+
+    return () => {
+      window.removeEventListener(STORE_UPDATE_EVENT, refresh);
+      window.removeEventListener("focus", refresh);
+      window.clearInterval(automationTimer);
+    };
   }, [refresh]);
 
   return {

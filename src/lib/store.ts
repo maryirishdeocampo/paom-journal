@@ -1,6 +1,10 @@
 import { MANUSCRIPT_WORKFLOW } from "./constants";
 import { normalizeManuscript } from "./manuscript-utils";
 import {
+  createReviewAssignment,
+  replaceUnresponsiveReviewers,
+} from "./review-assignment-automation";
+import {
   seedIssues,
   seedManuscripts,
   reviewers as seedReviewers,
@@ -91,13 +95,19 @@ function readStore(): StoreData {
     const raw = localStorage.getItem(STORE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as StoreData;
-      return {
+      const data = {
         manuscripts: parsed.manuscripts.map((m) =>
           normalizeManuscript(m as unknown as Record<string, unknown>)
         ),
         reviewers: parsed.reviewers,
         issues: parsed.issues,
       };
+      syncReviewerCounts(data);
+      if (replaceUnresponsiveReviewers(data)) {
+        syncReviewerCounts(data);
+        localStorage.setItem(STORE_KEY, JSON.stringify(data));
+      }
+      return data;
     }
   } catch {
     // continue
@@ -250,6 +260,7 @@ export const updateSubmissionStatus = updateManuscriptStatus;
 
 export function assignReviewers(manuscriptId: string, reviewerIds: string[]) {
   const current = getManuscriptById(manuscriptId);
+  const now = new Date().toISOString();
   const nextAssignments: ReviewAssignment[] = reviewerIds
     .filter(Boolean)
     .slice(0, 2)
@@ -258,13 +269,7 @@ export function assignReviewers(manuscriptId: string, reviewerIds: string[]) {
         (assignment) => assignment.reviewerId === reviewerId
       );
 
-      return (
-        existing ?? {
-          reviewerId,
-          status: "pending",
-          updatedAt: new Date().toISOString(),
-        }
-      );
+      return existing ?? createReviewAssignment(reviewerId, now);
     });
 
   updateManuscript(manuscriptId, {
@@ -284,11 +289,42 @@ export function assignManuscriptToIssue(manuscriptId: string, issueId: string | 
 
 export function updateReviewAssignments(
   manuscriptId: string,
-  reviewAssignments: ReviewAssignment[]
+  reviewAssignments: Array<
+    Pick<ReviewAssignment, "reviewerId" | "status"> &
+      Partial<Pick<ReviewAssignment, "decision" | "remarks">>
+  >
 ) {
+  const current = getManuscriptById(manuscriptId);
+  const now = new Date().toISOString();
   const sanitizedAssignments = reviewAssignments
     .filter((assignment) => assignment.reviewerId)
-    .slice(0, 2);
+    .slice(0, 2)
+    .map<ReviewAssignment>((assignment) => {
+      const existing = current?.reviewAssignments.find(
+        (item) => item.reviewerId === assignment.reviewerId
+      );
+      if (!existing) {
+        return {
+          ...createReviewAssignment(assignment.reviewerId, now),
+          status: assignment.status,
+          decision: assignment.decision,
+          remarks: assignment.remarks,
+        };
+      }
+
+      const responseChanged =
+        existing.status !== assignment.status ||
+        existing.decision !== assignment.decision ||
+        existing.remarks !== assignment.remarks;
+
+      return {
+        ...existing,
+        status: assignment.status,
+        decision: assignment.decision,
+        remarks: assignment.remarks,
+        updatedAt: responseChanged ? now : existing.updatedAt,
+      };
+    });
 
   updateManuscript(manuscriptId, {
     reviewAssignments: sanitizedAssignments,
